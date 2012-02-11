@@ -83,7 +83,7 @@ int main(int argc, char **argv)
 
     //make a bit array to keep track of which blocks we have reiceved
     struct bits blocksNeeded;
-    int bitArraySet = FALSE;
+    int bitArrayAllocd = FALSE;
 
     //open the file we're asking for
     int outFd = open(filename,'O_RDRW');
@@ -91,12 +91,32 @@ int main(int argc, char **argv)
 /* receive the whole document and make naive assumptions */ 
     //finish when the bit array has been set and it is empty
     //i.e all blocks of the file have been marked as recieved
-    while (!bitArraySet && bits_empty(&blocksNeeded)) { 
+    while (!bitArrayAllocd && bits_empty(&blocksNeeded)) { 
         int retval; 
 again: 
 	if ((retval = select_block(sockfd, 1, 0))==0) { 
         /* timeout */ 
-	  //send a request for the blocks we need
+	  //check if we've started getting blocks already
+	  if(!bitArrayAllocd) {
+	    //we've never gotten a responce
+	    //bad news
+	    perror("Timeout without recieving any blocks");
+	    exit(1);
+	  } else {
+	    //send a request for the blocks we need
+	    //do this badly for now - would need to rewrite
+	    //send_command to do better
+	    //baby steps
+	    int block;
+	    for(block = 0; block < blocksNeeded.nbits; ++block) {
+	      if(bits_testbit(&blocksNeeded, block)) {
+		//still need this block - request it
+		send_command(sockfd, server_dotted, server_port, filename, block, block);
+	      }
+	    }
+	    goto again;
+	  }
+	  
        } else if (retval<0) { 
 	/* error */ 
 	    perror("select"); 
@@ -131,9 +151,10 @@ again:
 	    } 
 	    
 	    //first, make the bit array if it has not already been made
-	    if(!bitArraySet) {
+	    if(!bitArrayAllocd) {
 	      bits_alloc(&blocksNeeded, one_block.total_blocks);
-	      bitArraySet = TRUE;
+	      bit_setrange(&blocksNeeded, 0, one_block.total_blocks-1);
+	      bitArrayAllocd = TRUE;
 	    }
 
 	    //next, write out the block
