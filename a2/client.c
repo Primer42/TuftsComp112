@@ -85,14 +85,18 @@ int main(int argc, char **argv)
     struct bits blocksNeeded;
     int bitArraySet = FALSE;
 
+    //open the file we're asking for
+    int outFd = open(filename,'O_RDRW');
+
 /* receive the whole document and make naive assumptions */ 
-    int done = FALSE; // set to TRUE when you think you're done
-    while (!done) { 
+    //finish when the bit array has been set and it is empty
+    //i.e all blocks of the file have been marked as recieved
+    while (!bitArraySet && bits_empty(&blocksNeeded)) { 
         int retval; 
 again: 
 	if ((retval = select_block(sockfd, 1, 0))==0) { 
         /* timeout */ 
-	    fprintf(stderr, "HANDLE LACK OF RESPONSE HERE\n"); 
+	  //send a request for the blocks we need
        } else if (retval<0) { 
 	/* error */ 
 	    perror("select"); 
@@ -126,8 +130,21 @@ again:
 		goto again; 
 	    } 
 	    
-	    fprintf(stderr, "RECORD BLOCK DATA HERE\n"); 
-	} 
+	    //first, make the bit array if it has not already been made
+	    if(!bitArraySet) {
+	      bits_alloc(&blocksNeeded, one_block.total_blocks);
+	      bitArraySet = TRUE;
+	    }
+
+	    //next, write out the block
+	    lseek(outfd, one_block.which_block*PAYLOADSIZE, SEEK_SET);
+	    write(outfd, one_block.payload, one_block.paysize);
+
+	    //finally, mark the block as recieved
+	    bits_clearbit(&blocksNeeded, one_block.which_block)
+	}
+
+	close(outFd)
     } 
 }
 
