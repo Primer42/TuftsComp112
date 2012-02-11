@@ -1,0 +1,5 @@
+# ignore *.o
+*.o
+
+#also ignore any a.out's
+a.out
