@@ -15,6 +15,72 @@
 #define TRUE  1
 #define FALSE 0
 
+int sendPremadeCommand(int sockfd, const char* address, int port, struct command loc_cmd) {
+  fprintf(stderr, "sendPremadeCommand with %d ranges\n", loc_cmd.nranges);
+  struct command net_cmd;
+  struct sockaddr_in server_addr;
+  //translate the command into network order
+  command_local_to_network(&loc_cmd, &net_cmd);
+  //set up target address
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = PF_INET;
+  inet_pton(PF_INET, address, &server_addr.sin_addr);
+  server_addr.sin_port = htons(port);
+  //send the packet
+  int sendsize = COMMAND_SIZE(loc_cmd.nranges);
+  int ret = sendto(sockfd, (void*) & net_cmd, sendsize, 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
+  if (ret<0) perror ("sendPremadeCommand");
+  return ret;
+}
+
+void requestMissingBlocks(int sockfd, const char* address, int port, const char* filename, struct bits *blocksNeeded) {
+  struct command cmd;
+  //set up cmd structur
+  memset(&cmd, 0, sizeof(cmd));
+  strcpy(cmd.filename, filename);
+  int constructingRange = FALSE;
+  cmd.nranges = 0;
+  int block;
+
+  //  numBlocksRecieved = 0;
+  //numBlocksNeeded = 0;
+
+  for(block = 0; block < blocksNeeded->nbits; ++block) {
+    if(constructingRange) {
+      //in the middle of constructing a range - look for the end of the range
+      if(!bits_testbit(blocksNeeded, block)) {
+	//found the end of the range
+	cmd.ranges[cmd.nranges].last_block = block - 1;
+	//numBlocksNeeded += cmd.ranges[cmd.nranges].last_block - cmd.ranges[cmd.nranges].first_block;
+	cmd.nranges += 1;
+	//check to see if we have too many ranges and need to send the command
+	if(cmd.nranges == MAXRANGES) {
+	  sendPremadeCommand(sockfd, address, port, cmd);
+	  cmd.nranges = 0;
+	}
+	constructingRange = FALSE;
+      }
+    } else {
+      //not currently constructing a range - look for the start of a range
+      if(bits_testbit(blocksNeeded, block)) {
+	//found the start of a range
+	cmd.ranges[cmd.nranges].first_block = block;
+	constructingRange = TRUE;
+      }
+    }
+  }
+  //if we're currently making a range, finish it
+  if(constructingRange) {
+    cmd.ranges[cmd.nranges].last_block = blocksNeeded->nbits;
+    cmd.nranges += 1;
+  }
+  //see if we have any ranges to send
+  if(cmd.nranges) {
+    sendPremadeCommand(sockfd, address, port, cmd);
+  }
+}
+
+
 int main(int argc, char **argv)
 {
 
@@ -108,27 +174,28 @@ int main(int argc, char **argv)
 	break;
       }
       
-      if ((retval = select_block(sockfd, 1, 0))==0) { 
+      if((retval = select_block(sockfd, 1, 0))==0) { 
         /* timeout */ 
 	fprintf(stderr, "Timeout\n");
 	//check if we've started getting blocks already
 	if(!bitArrayAllocd) {
 	  //we've never gotten a responce
 	  //bad news
-	  fprintf(stderr, "Timeout without recieving any blocks");
+	  fprintf(stderr, "Timeout without recieving any blocks\n");
 	  exit(1);
 	} else {
 	  //send a request for the blocks we need
 	  //do this badly for now - would need to rewrite
 	  //send_command to do better
 	  //baby steps
-	  int block;
-	  for(block = 0; block < blocksNeeded.nbits; ++block) {
-	    if(bits_testbit(&blocksNeeded, block)) {
+	  //int block;
+	  //for(block = 0; block < blocksNeeded.nbits; ++block) {
+	  // if(bits_testbit(&blocksNeeded, block)) {
 	      //still need this block - request it
-	      send_command(sockfd, server_dotted, server_port, filename, block, block);
-	    }
-	  }
+	  //    send_command(sockfd, server_dotted, server_port, filename, block, block);
+	  //	}//
+	  requestMissingBlocks(sockfd, server_dotted, server_port, filename, &blocksNeeded);
+	  //}
 	}
 	
       } else if (retval<0) { 
@@ -175,7 +242,7 @@ int main(int argc, char **argv)
 	//next, write out the block
 	lseek(outFd, one_block.which_block*PAYLOADSIZE, SEEK_SET);
 	write(outFd, one_block.payload, one_block.paysize);
-	
+
 	//finally, mark the block as recieved
 	bits_clearbit(&blocksNeeded, one_block.which_block);	
       }
