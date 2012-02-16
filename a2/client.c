@@ -11,9 +11,15 @@
 #include "help.h" 
 
 #include <sys/stat.h>
+#include <math.h>
 
 #define TRUE  1
 #define FALSE 0
+
+#define REQUEST_PERCENTAGE .75
+
+int numBlocksNeeded = MAXINT;
+int numBlocksRecieved = 0;
 
 int sendPremadeCommand(int sockfd, const char* address, int port, struct command loc_cmd) {
   fprintf(stderr, "sendPremadeCommand with %d ranges\n", loc_cmd.nranges);
@@ -33,6 +39,12 @@ int sendPremadeCommand(int sockfd, const char* address, int port, struct command
   return ret;
 }
 
+int makeRequest() {
+  int limit = numBlocksNeeded * REQUEST_PERCENTAGE + 1;
+  fprintf(stderr, "Have %d of %d with limit %d\n", numBlocksRecieved, numBlocksNeeded, limit);
+  return numBlocksRecieved == limit;
+}
+
 void requestMissingBlocks(int sockfd, const char* address, int port, const char* filename, struct bits *blocksNeeded) {
   struct command cmd;
   //set up cmd structur
@@ -42,8 +54,8 @@ void requestMissingBlocks(int sockfd, const char* address, int port, const char*
   cmd.nranges = 0;
   int block;
 
-  //  numBlocksRecieved = 0;
-  //numBlocksNeeded = 0;
+  numBlocksRecieved = 0;
+  numBlocksNeeded = 0;
 
   for(block = 0; block < blocksNeeded->nbits; ++block) {
     if(constructingRange) {
@@ -51,7 +63,7 @@ void requestMissingBlocks(int sockfd, const char* address, int port, const char*
       if(!bits_testbit(blocksNeeded, block)) {
 	//found the end of the range
 	cmd.ranges[cmd.nranges].last_block = block - 1;
-	//numBlocksNeeded += cmd.ranges[cmd.nranges].last_block - cmd.ranges[cmd.nranges].first_block;
+	numBlocksNeeded += cmd.ranges[cmd.nranges].last_block + 1 - cmd.ranges[cmd.nranges].first_block;
 	cmd.nranges += 1;
 	//check to see if we have too many ranges and need to send the command
 	if(cmd.nranges == MAXRANGES) {
@@ -202,6 +214,8 @@ int main(int argc, char **argv)
 	/* error */ 
 	perror("select"); 
 	fprintf(stderr, "client: receive error\n"); 
+      } else if (makeRequest()) {
+	requestMissingBlocks(sockfd, server_dotted, server_port, filename, &blocksNeeded);
       } else { 
 	/* input is waiting, read it */ 
 	struct sockaddr_in resp_sockaddr; 	/* address/port pair */ 
@@ -237,14 +251,21 @@ int main(int argc, char **argv)
 	  bits_clearall(&blocksNeeded);
 	  bits_setrange(&blocksNeeded, 0, one_block.total_blocks-1);
 	  bitArrayAllocd = TRUE;
+	  numBlocksNeeded = one_block.total_blocks;
+	  numBlocksRecieved = 0;
 	}
 	
 	//next, write out the block
 	lseek(outFd, one_block.which_block*PAYLOADSIZE, SEEK_SET);
 	write(outFd, one_block.payload, one_block.paysize);
 
+	//see if the block has been recieved already
+	if (bits_testbit(&blocksNeeded, one_block.which_block)) {
+	  ++numBlocksRecieved;
+	}
+
 	//finally, mark the block as recieved
-	bits_clearbit(&blocksNeeded, one_block.which_block);	
+	bits_clearbit(&blocksNeeded, one_block.which_block);
       }
       //see if we're done
       done = bits_empty(&blocksNeeded);
