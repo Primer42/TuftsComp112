@@ -2,10 +2,17 @@
 // a simple file completion strategy
 
 /*=============================
-  Starting solution for Assignment 2: UDP file transfer
-  the intent of this file is to demonstrate how to 
-  call the helper routines. It will help you avoid some
-  common errors. IT DOES NOT SOLVE THE PROBLEM. 
+  William Richard (wrichard)
+  Comp112 a2
+  
+  My code is pretty simple.
+  It makes a bit array to keep track of which blocks it has recieved.
+  It asks for more blocks either if there is a timeout (i.e. it has
+  exhausted the buffer) or if it has recieved 75% of the blocks
+  it last requested.
+  I found that this was about the optimal number while I was on the
+  server alone.
+  It does NOT impliment the extra credit.
   =============================*/ 
 
 #include "help.h" 
@@ -21,6 +28,9 @@
 int numBlocksNeeded = MAXINT;
 int numBlocksRecieved = 0;
 
+//This sends the command that is passed to it
+//deals with all the network order stuff so the function that makes 
+//the command doesn't have to
 int sendPremadeCommand(int sockfd, const char* address, int port, struct command loc_cmd) {
   fprintf(stderr, "sendPremadeCommand with %d ranges\n", loc_cmd.nranges);
   struct command net_cmd;
@@ -39,12 +49,20 @@ int sendPremadeCommand(int sockfd, const char* address, int port, struct command
   return ret;
 }
 
+/* This method tests if we should make another request.
+   i.e. if we have recieved 75% of the packets we last asked for.
+*/
 int makeRequest() {
   int limit = numBlocksNeeded * REQUEST_PERCENTAGE + 1;
-  fprintf(stderr, "Have %d of %d with limit %d\n", numBlocksRecieved, numBlocksNeeded, limit);
   return numBlocksRecieved == limit;
 }
 
+/* This function requests the missing blocks
+   in as few 'command' packets as possible.
+   It looks through the bit array, looking for ranges of missing blocks
+   Once it has created 12 ranges, it sends a command.
+   At the end, if it has any ranges left over, it sends them.
+*/
 void requestMissingBlocks(int sockfd, const char* address, int port, const char* filename, struct bits *blocksNeeded) {
   struct command cmd;
   //set up cmd structur
@@ -196,18 +214,7 @@ int main(int argc, char **argv)
 	  fprintf(stderr, "Timeout without recieving any blocks\n");
 	  exit(1);
 	} else {
-	  //send a request for the blocks we need
-	  //do this badly for now - would need to rewrite
-	  //send_command to do better
-	  //baby steps
-	  //int block;
-	  //for(block = 0; block < blocksNeeded.nbits; ++block) {
-	  // if(bits_testbit(&blocksNeeded, block)) {
-	      //still need this block - request it
-	  //    send_command(sockfd, server_dotted, server_port, filename, block, block);
-	  //	}//
 	  requestMissingBlocks(sockfd, server_dotted, server_port, filename, &blocksNeeded);
-	  //}
 	}
 	
       } else if (retval<0) { 
@@ -261,6 +268,7 @@ int main(int argc, char **argv)
 
 	//see if the block has been recieved already
 	if (bits_testbit(&blocksNeeded, one_block.which_block)) {
+	  //increment our counter if it's a new block
 	  ++numBlocksRecieved;
 	}
 
