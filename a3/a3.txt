@@ -1,0 +1,71 @@
+William Richard
+wrichard
+Comp112 Spring '12
+Assignment 3
+
+Page 301, problem 13. 
+In the case where the sender sends data infrequently, a NAK only protocol would not be preferable to a protocl that uses ACKs.  The reason is that the reciever is going to have not indiciation that they have missed a packet until the next packet arrives.  Thus, if the sender is not sending data often, there is going to be a long delay from when the missing packet is sent to when the NAK for the missing packet is sent.  If the protocol used ACKs, the sender would be able to determine much earlier that a packet was lost, as the sender would not recieve an ACK.
+If the sender has a lot of data to send, the reciever will be able to determine quickly if a packet is missing, and thus be able to respond with a NAK in a timely manner (except for the last packet in the stream...).  This would be preferable to a reliable protocol using ACKs because it will reduce traffic - few packets will be lost, so few NAKs must be sent.  If it was using a protocol with ACKs, every packet sent would have a corresponding ACK, so much more traffic would be utilized.
+One last thought.  Let's consider the second situaion, where a lot of data is being sent, and the last packet is dropped.  The reciever will only find out it has lost the last packet when the sender starts up the next batch of data, or if the sender tries to close the connection.  This can be solved by the sender providing a count of how many packets they plan on sending, if possible.  Thus, the reciever can have a timer, and thus the reciever would timeout on the last packet and send a NAK in a timely manner.  This would not help the first scenario, as the sender is likely sending data more infrequently than the timeout, and so the reciever might respond with NAKs for packets that had not been sent yet.
+
+Page 303, problem 20.
+See attached pdf file with the FSM diagrams.
+
+When A get's a request for the next ID from above, it should request it from B. Since the connection from A -> B might loose the packet, A has a timeout, after which it will re-request the data.  The counter is used to make sure only one copy of each data packet is returned to the level above A.
+
+B also keeps a counter.  Since it's connection to A is totally reliable with no possibility of loss, B should only send each piece of data once.  The counter is necessary in case A sends more than one request before B is able to respond - if they all make it through and B was not keeping a counter, it  would respond to each request.  This way, if B gets requests, it knows what data to respond with, and we can guarantee that B will not respond with a given piece of data more than necessary.  Thus, once A get's the packet it needs, it can safely assume that it is the only copy of that data packet that it needs and return it.
+
+For this reason, A should never get a wrong numbered piece of data, but just to be explicit I included a trasition in A to deal with that situation.
+
+Page 425, problem 4.
+a) Since in datagram networks, routers foward based on destination address prefix and only store the next hop, those are the only two columns we need.
+Dest	Next hop
+H3	B
+
+b) No. Routers on datagram networks do not care about a packet's source, only the packet's destination. The forwarding table only holds the next router to send a packet going towards a specific subnet or host.  Both of these facts combined are why it is impossible to construct a datagram network forwarding table that sends traffic from H1 to H3 through router B and traffic from H2 to H3 through router C.
+
+c) For simplicty, I'm going to assume that the connection between H1 and H3 has VC number 10 at all points, and the connection between H2 and H3 has VC number 20 at all points.  In reality, it is likely, but not necessary, that this number would change in each router, but that needlessly complicates the answer to this problem.
+As the question only seems to specify a one way connection from H1 to H3 and H2 to H3, that is the only direction that will be addressed in both parts c and d.
+
+Incoming interface    Incoming VC #   Outgoing interface  Outgoing VC #
+1	 	      10	      3	       		  10
+2		      20	      4			  20
+
+d)
+B
+Incoming interface    Incoming VC #   Outgoing interface  Outgoing VC #
+1	 	      10       	      2	       		  10
+
+C
+Incoming interface    Incoming VC #   Outgoing interface  Outgoing VC #
+1	 	      20       	      2	       		  20
+
+D
+Incoming interface    Incoming VC #   Outgoing interface  Outgoing VC #
+1	 	      10       	      3	       		  10
+2		      20	      3			  20
+
+Page 427, problem 9.
+a)
+Prefix Match		Link Interface
+11100000 00    		0
+11100000 01000000	1
+11100000 01000001	2
+11100001 01		2
+otherwise		3
+
+b)
+11001000 10010001 01010001 01010101
+does not match any prefx, as it starts with 110, thus it is sent through link interface 3
+
+11100001 01000000 11000011 00111100
+matches prefix
+11100001 01
+Thus it is sent through link interface 2.
+
+11100001 10000000 00010001 01110111
+does not match any prefx. It matches the first byte of all of our prefixes, but it starts with a 1 in the second byte, while all of our prefixes start with a 0.
+Thus, it is in the "otherwise" category and is sent through link interface 3.
+
+For 10% extra credit: Page 431, problem 31. 
+
