@@ -4,4 +4,12 @@
 #also ignore any a.out's
 a.out
 
+#ignore emacs temp files
 *.*~
+
+#ignore specific executable
+a2/client
+a2/server
+a2/CLIENT
+a2/SERVER
+a5/nose
