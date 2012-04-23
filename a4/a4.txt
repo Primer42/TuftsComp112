@@ -1,0 +1,37 @@
+Page 589, problem 4.
+
+The trivial answer is simply that the two senders get CDMA codes from different towers, and the codes happen to be identical. If the senders transmit the same bit, there are no problems. If they transmit different bits, the towers will not see any signal, and drop both bits. 
+
+A less tivial answer follows.
+Sender 1 (s1) has code (+1,-1,+1,-1) for 1 (and the inverse for 0)
+Sender 2 (s2) has code (+1,+1,-1,+1) for 1 (and the inverse for 0)
+
+(+1,-1,+1,-1) 	       		     (+2, 0, 0, 0) summed / M = 2 / 4 = 1/2
+		=>  (+2,0,0,0) => 
+(+1,+1,-1,+1)			     (+2, 0, 0, 0) summed / M = 2 / 4 = 1/2
+
+Doesn't work - expected answser would have been +1 or -1, and we got +1/2 in both cases.	
+
+
+Page 590, problem 7.
+
+Each frame can hold a maximum of 2312 bytes, so we need only send one frame to transmit our data.
+
+Thus, we need to wait for a DIFS, send a RTS, the AP will wait a SIFS, send a CTS, then we wait a SIFS, send our fram, the AP waits a SIFS and sends an ACK.
+
+Ignoring all propogation/transmission delays, we need to wait for 1*DIFS + 3*SIFS to transmit our data and recieve an acknowledgment.
+
+
+Page 592, problem 11.
+
+a) If the information about the new route has been propogated to the other router, it will route the message correctly.  Otherwise, the message will start by going to the wrong place, and probably get dropped.
+b) Yes. As the information about the drastically new route propogates through the network, some routers will have the updated, correct information, and some routers will have outdated, incorrect information.
+c) Depending on how often routers share updated distance vectiors with their neighbors, and depending on how many router there are, the time that it will take for all of the other routers to start sending their packets to the correct location can vary greatly.  If I had to guess, it could take a pretty long time - I would say seconds to minutes.
+
+
+Page 593, problem 15.
+
+Yes, it is possible for two mobile nodes to use the same care-of-address in mobile IP.  It is possible that a foreign agent has only one COA available, and thus all mobile nodes would use that COA.  Such a situation could be managed very simply - when the home agent forwards a message to the COA, it can specify the recipient, and thus the COA would be able to forward the message correctly.
+
+
+For 10% extra credit: Page 590, problem 5. 
