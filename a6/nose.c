@@ -83,28 +83,30 @@ hostRecord* getHostRecordAt(int i) {
 void checkHostsAliveSignalHandler(int sig) {
   if(sig == SIGALRM) {
     //send out our broadcast packet
-    char* send_line = "testing"; //it doesn't really matter what we say, for now
+    //make the message
+    char send_line [MAXMESG];
+    strncat(send_line, "alive\n", 6);
+    int i;
+    char hostLine[MAXMESG];
+    for(i = 0; i < MAX_STORED_HOSTS; ++i) {
+      hostRecord* curHost = getHostRecordAt(i);
+      if(curHost == NULL) {
+	continue;
+      }
+      snprintf(hostLine, MAXMESG, "%s %d\n", curHost->hostAddr, curHost->lastSeenAt);
+      strncat(send_line, hostLine, strlen(hostLine));
+    }
+    
     //send the packet - all of the necessary variables have been initialized already
     sendto(send_sockfd, (void*) send_line, strlen(send_line), 0, (struct sockaddr *)&bcast_addr, (socklen_t) sizeof(bcast_addr));
     
     //set the alarm for the next broadcast
     alarm(BROADCAST_EVERY);
 
-    //print our currently seen hosts
-    /* int i; */
-    /*     time_t currentTime = time(NULL); */
-/*     printf("Currently known hosts:\n"); */
-/*     for(i = 0; i < MAX_STORED_HOSTS; ++i) { */
-/*       //only print if it's not out of date */
-/*       if(difftime(currentTime, records[i].lastSeenAt) <= DEAD_THRESHOLD) { */
-/* 	printf("%s\n", records[i].hostAddr); */
-/*       } */
-/*     } */
-/*     printf("*********************\n"); */
   }
 }
 
-void addOrUpdateHost(char* newHostAddr) {
+void addOrUpdateHost(char* newHostAddr, time_t seenAt) {
       //find the first host that is either out of date or matches our connected host
       int matchingIndex = -1;
       int outOfDateIndex = -1;
@@ -125,16 +127,20 @@ void addOrUpdateHost(char* newHostAddr) {
       //update the lastSeenAt if we have a match
       if(matchingIndex >= 0) {
 	//if we found a match, update that record
-	records[matchingIndex].lastSeenAt = currentTime;
+	records[matchingIndex].lastSeenAt = seenAt;
       } else if(outOfDateIndex >= 0) {
 	//if we didn't find a match, but we found an out of date record
 	//put our new record at that location
 	strncpy(records[outOfDateIndex].hostAddr, newHostAddr, INET_ADDRSTRLEN);
-	records[outOfDateIndex].lastSeenAt = currentTime;
+	records[outOfDateIndex].lastSeenAt = seenAt;
       } else {
 	perror("Out of space for records. Please increase MAX_STORED_HOSTS.");
 	exit(1);
       }
+}
+
+void addOrUpdateHost(char* newHostAddr) {
+  addOrUpdateHost(newHostAddr, time(NULL));
 }
 
 /* int main(int argc, char** argv) { */

@@ -11,8 +11,10 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h> 
+#include <signal.h>
 #include "operations.h"
 #include "storage.h" 
+#include "nose.h"
 
 #define SERV_PORT 8000 	/* server's port number */
 #define SERV_BLOCKS 100		/* number of blocks to buffer */ 
@@ -269,6 +271,10 @@ int main(int argc, char *argv[])
 	  
     /* listen to the socket */
     listen(tcp_sock, 5);
+
+    /* Start the discovery signal */
+    signal(SIGALRM, checkHostsAliveSignalHandler);
+    raise(SIGALRM);
 
     for(;;) {
 

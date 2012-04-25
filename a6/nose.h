@@ -10,6 +10,7 @@ typedef struct _host_record{
 } hostRecord;
 
 
+void addOrUpdateHost(char* newHostAddr, time_t seenAt);
 void addOrUpdateHost(char* newHostAddr);
 void checkHostsAliveSignalHandler(int sig);
 hostRecord* getHostRecordAt(int i);
