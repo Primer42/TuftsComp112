@@ -6,6 +6,7 @@ a.out
 
 #ignore emacs temp files
 *.*~
+\#*\#
 
 #ignore specific executable
 a2/client
@@ -19,3 +20,6 @@ a6/udpclient
 
 #ignore any core dumps
 core.*
+
+#ignore hidden files
+.*
