@@ -205,8 +205,10 @@ int main(int argc, char *argv[])
     struct sockaddr_in tcp_addr;
 
     /* udp server */ 
-    int udp_sock;
+    int recv_udp_sock;
     struct sockaddr_in udp_addr; 	/* server address */ 
+
+    int send_udp_sock;
 
     /* message */ 
     char request[MAXMESG]; 
@@ -236,10 +238,17 @@ int main(int argc, char *argv[])
     } 
     flog("tcp server starting on port %d with %d blocks",serv_port,storage_blocks); 
     storage_begin(storage_blocks); 
-    
 
     /* make a udp socket */ 
-    udp_sock = socket(PF_INET, SOCK_DGRAM, 0);
+    recv_udp_sock = socket(PF_INET, SOCK_DGRAM, 0);
+
+    /* allow broadcasts on the recieving socket*/
+    const int broadcast = 1;
+    if((setsockopt(recv_udp_sock,SOL_SOCKET,SO_BROADCAST,
+		   &broadcast,sizeof broadcast))) {
+      perror("setsockopt - SO_SOCKET ");
+      exit(1);
+    }
 
     bzero(&udp_addr, sizeof(udp_addr));
     udp_addr.sin_family      = PF_INET;
@@ -247,8 +256,18 @@ int main(int argc, char *argv[])
     udp_addr.sin_port        = htons(serv_port);
 
     /* bind it to an address and port */ 
-    if (bind(udp_sock, (struct sockaddr *) &udp_addr, sizeof(udp_addr))<0) 
+    if (bind(recv_udp_sock, (struct sockaddr *) &udp_addr, sizeof(udp_addr))<0) 
 	perror("can't bind local address"); 
+
+    /* make the sending udp socket */
+    send_udp_sock = socket(PF_INET, SOCK_DGRAM, 0);
+
+    /* allow broadcasts on the send socket*/
+    if((setsockopt(send_udp_sock,SOL_SOCKET,SO_BROADCAST,
+		   &broadcast,sizeof broadcast))) {
+      perror("setsockopt - SO_SOCKET ");
+      exit(1);
+    }
 
     /* open a TCP socket (an Internet stream socket) */
     if((tcp_sock = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
@@ -273,8 +292,7 @@ int main(int argc, char *argv[])
     listen(tcp_sock, 5);
 
     /* Start the discovery signal */
-    signal(SIGALRM, checkHostsAliveSignalHandler);
-    raise(SIGALRM);
+    initDiscovery(port, send_udp_sock);
 
     for(;;) {
 

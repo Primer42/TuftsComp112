@@ -17,6 +17,7 @@
 
 //if DEAD_THRESHOLD is less than BROADCAST_EVERY, we will not find ourselves
 #define DEAD_THRESHOLD 4
+#define NUM_BROADCAST_ADDRS 2
 
 /*This is the array of host records.
 It is going to initialized to all 0's.
@@ -37,7 +38,7 @@ int port; //port is going to be used by both sending and recieving sides
 //they must be stored outside of the method so we don't have to remake them
 //for every send.
 int send_sockfd;
-struct sockaddr_in bcast_addr;
+struct sockaddr_in bcast_addrs[NUM_BROADCAST_ADDRS];
 
 // read the primary IP address for an ECE/CS host 
 // this is always the address bound to interface eth0
@@ -84,21 +85,24 @@ void checkHostsAliveSignalHandler(int sig) {
   if(sig == SIGALRM) {
     //send out our broadcast packet
     //make the message
-    char send_line [MAXMESG];
+    char send_line [MAX_MESG];
     strncat(send_line, "alive\n", 6);
     int i;
-    char hostLine[MAXMESG];
+    char hostLine[MAX_MESG];
     for(i = 0; i < MAX_STORED_HOSTS; ++i) {
       hostRecord* curHost = getHostRecordAt(i);
       if(curHost == NULL) {
 	continue;
       }
-      snprintf(hostLine, MAXMESG, "%s %d\n", curHost->hostAddr, curHost->lastSeenAt);
+      snprintf(hostLine, MAX_MESG, "%s %ld\n", curHost->hostAddr, curHost->lastSeenAt);
       strncat(send_line, hostLine, strlen(hostLine));
     }
     
     //send the packet - all of the necessary variables have been initialized already
-    sendto(send_sockfd, (void*) send_line, strlen(send_line), 0, (struct sockaddr *)&bcast_addr, (socklen_t) sizeof(bcast_addr));
+    int i;
+    for(i = 0; i < NUM_BROADCAST_ADDRS; ++i) {
+      sendto(send_sockfd, (void*) send_line, strlen(send_line), 0, (struct sockaddr *)&(bcast_addrs[i]), (socklen_t) sizeof(bcast_addrs[i]));
+    }
     
     //set the alarm for the next broadcast
     alarm(BROADCAST_EVERY);
@@ -141,6 +145,41 @@ void addOrUpdateHost(char* newHostAddr, time_t seenAt) {
 
 void addOrUpdateHostNow(char* newHostAddr) {
   addOrUpdateHost(newHostAddr, time(NULL));
+}
+
+int req_is_alive(char* request) {
+  if(strncmp(request, "alive\n", 6) == 0) {
+    return 1;
+  }
+  return 0;
+}
+
+void initDiscovery(int inputPort, int udp_sock) {
+  port = inputPort;
+  send_sockfd = udp_sock;
+
+  //set up the broadcast addresses
+  memset(&bcast_addrs, 0, sizeof(struct sockaddr_in) * NUM_BROADCAST_ADDRS);
+  
+  bcast_addrs[0].sin_family=PF_INET;
+  bcast_addrs[1].sin_family=PH_INET;
+
+  inet_aton("130.64.23.255", bcast_addrs[0].sin_addr);
+  inet_aton("10.255.255.255", bcast_addrs[1].sin_addr);
+
+
+  bcast_addrs[0].sin_port = htons(port);
+  bcast_addrs[1].sin_port = htons(port);
+  
+  //set up the records array
+  records = (hostRecord*) malloc(sizeof(hostRecord) * MAX_STORED_HOSTS);
+  memset(records, 0, sizeof(hostRecord) * MAX_STORED_HOSTS);
+
+  //set up signal handling method
+  signal(SIGALRM, checkHostsAliveSignalHandler);
+  //start the SIGALRM
+  raise(SIGALRM);
+  
 }
 
 /* int main(int argc, char** argv) { */

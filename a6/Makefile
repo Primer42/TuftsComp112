@@ -10,13 +10,13 @@ nuts: nuts.o
 nuts.o: nuts.c
 	gcc $(CFLAGS) $(OFLAGS) nuts.c
 
-operations.o: operations.c storage.h 
+operations.o: operations.c storage.h nose.h
 	gcc $(CFLAGS) $(OFLAGS) operations.c
 
 storage.o: storage.c storage.h
 	gcc $(CFLAGS) $(OFLAGS) storage.c
 
-squirrel.o: squirrel.c operations.h storage.h 
+squirrel.o: squirrel.c operations.h storage.h nose.h
 	gcc $(CFLAGS) $(OFLAGS) squirrel.c
 
 udpclient: udpclient.o

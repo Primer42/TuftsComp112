@@ -11,6 +11,7 @@
 
 #include "storage.h"
 #include "operations.h"
+#include "nose.h"
 
 #define TRUE 1
 #define FALSE 0
