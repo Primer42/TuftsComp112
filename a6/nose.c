@@ -139,7 +139,7 @@ void addOrUpdateHost(char* newHostAddr, time_t seenAt) {
       }
 }
 
-void addOrUpdateHost(char* newHostAddr) {
+void addOrUpdateHostNow(char* newHostAddr) {
   addOrUpdateHost(newHostAddr, time(NULL));
 }
 

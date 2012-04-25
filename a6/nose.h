@@ -11,7 +11,7 @@ typedef struct _host_record{
 
 
 void addOrUpdateHost(char* newHostAddr, time_t seenAt);
-void addOrUpdateHost(char* newHostAddr);
+void addOrUpdateHostNow(char* newHostAddr);
 void checkHostsAliveSignalHandler(int sig);
 hostRecord* getHostRecordAt(int i);
 
