@@ -13,6 +13,9 @@ a2/server
 a2/CLIENT
 a2/SERVER
 a5/nose
+a6/nuts
+a6/squirrel
+a6/udpclient
 
 #ignore any core dumps
 core.*
