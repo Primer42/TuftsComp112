@@ -12,8 +12,8 @@ typedef struct _host_record{
 
 void addOrUpdateHost(char* newHostAddr, time_t seenAt);
 void addOrUpdateHostNow(char* newHostAddr);
-void checkHostsAliveSignalHandler(int sig);
 hostRecord* getHostRecordAt(int i);
-
+void initDiscovery(int inputPort, int udp_sock);
+int req_is_alive(char* request);
 
 #endif

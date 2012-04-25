@@ -2,6 +2,7 @@
 #include <ifaddrs.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,7 +18,7 @@
 
 //if DEAD_THRESHOLD is less than BROADCAST_EVERY, we will not find ourselves
 #define DEAD_THRESHOLD 4
-#define NUM_BROADCAST_ADDRS 2
+#define NUM_BROADCAST_ADDRS 4
 
 /*This is the array of host records.
 It is going to initialized to all 0's.
@@ -39,6 +40,23 @@ int port; //port is going to be used by both sending and recieving sides
 //for every send.
 int send_sockfd;
 struct sockaddr_in bcast_addrs[NUM_BROADCAST_ADDRS];
+
+/* logging of server actions */ 
+#define MAXOUT 256 		/* maximum number of output chars for flog */ 
+static void flog(const char *fmt, ...) {
+    va_list ap;
+    char *p; 
+    char buf[MAXOUT]; 
+    va_start(ap, fmt);
+    fprintf(stderr,"[nose: "); 
+    vsnprintf(buf,MAXOUT,fmt,ap); 
+    for (p=buf; *p && p-buf<MAXOUT; p++) 
+	if ((*p)>=' ') 
+	    putc(*p,stderr); 
+    fprintf(stderr,"]\n"); 
+    va_end(ap);
+}
+
 
 // read the primary IP address for an ECE/CS host 
 // this is always the address bound to interface eth0
@@ -86,6 +104,7 @@ void checkHostsAliveSignalHandler(int sig) {
     //send out our broadcast packet
     //make the message
     char send_line [MAX_MESG];
+    send_line[0] = '\0';
     strncat(send_line, "alive\n", 6);
     int i;
     char hostLine[MAX_MESG];
@@ -97,13 +116,16 @@ void checkHostsAliveSignalHandler(int sig) {
       snprintf(hostLine, MAX_MESG, "%s %ld\n", curHost->hostAddr, curHost->lastSeenAt);
       strncat(send_line, hostLine, strlen(hostLine));
     }
+
+    flog("Sending message '%s' on socket %d\n", send_line, send_sockfd);
+    printf("'%s'\n", send_line);
     
     //send the packet - all of the necessary variables have been initialized already
-    int i;
     for(i = 0; i < NUM_BROADCAST_ADDRS; ++i) {
+      flog("Sending broadcast to %s\n", inet_ntop(PF_INET, (void*) &(bcast_addrs[i].sin_addr.s_addr), hostLine, INET_ADDRSTRLEN));
       sendto(send_sockfd, (void*) send_line, strlen(send_line), 0, (struct sockaddr *)&(bcast_addrs[i]), (socklen_t) sizeof(bcast_addrs[i]));
     }
-    
+
     //set the alarm for the next broadcast
     alarm(BROADCAST_EVERY);
 
@@ -112,35 +134,37 @@ void checkHostsAliveSignalHandler(int sig) {
 
 void addOrUpdateHost(char* newHostAddr, time_t seenAt) {
       //find the first host that is either out of date or matches our connected host
-      int matchingIndex = -1;
-      int outOfDateIndex = -1;
-      int i;
-      time_t currentTime = time(NULL);
-      for(i = 0; i < MAX_STORED_HOSTS || (matchingIndex > 0 && outOfDateIndex > 0); ++i) {
-	if(outOfDateIndex < 0 && difftime(currentTime, records[i].lastSeenAt) > DEAD_THRESHOLD) {
-	  outOfDateIndex = i;
-	  //there may be an out of date before our match, so we must keep looking
-	}
-	if(matchingIndex < 0 && strncmp(records[i].hostAddr, newHostAddr, INET_ADDRSTRLEN) == 0) {
-	  matchingIndex = i;
-	  //if we have found a match, we don't need to find an out of date
-	  break;
-	}
-      }
-
-      //update the lastSeenAt if we have a match
-      if(matchingIndex >= 0) {
-	//if we found a match, update that record
-	records[matchingIndex].lastSeenAt = seenAt;
-      } else if(outOfDateIndex >= 0) {
-	//if we didn't find a match, but we found an out of date record
-	//put our new record at that location
-	strncpy(records[outOfDateIndex].hostAddr, newHostAddr, INET_ADDRSTRLEN);
-	records[outOfDateIndex].lastSeenAt = seenAt;
-      } else {
-	perror("Out of space for records. Please increase MAX_STORED_HOSTS.");
-	exit(1);
-      }
+  flog("Got host %s seen at %ld\n", newHostAddr, seenAt);
+  int matchingIndex = -1;
+  int outOfDateIndex = -1;
+  int i;
+  time_t currentTime = time(NULL);
+  for(i = 0; i < MAX_STORED_HOSTS || (matchingIndex > 0 && outOfDateIndex > 0); ++i) {
+    if(outOfDateIndex < 0 && difftime(currentTime, records[i].lastSeenAt) > DEAD_THRESHOLD) {
+      outOfDateIndex = i;
+      //there may be an out of date before our match, so we must keep looking
+    }
+    if(matchingIndex < 0 && strncmp(records[i].hostAddr, newHostAddr, INET_ADDRSTRLEN) == 0) {
+      matchingIndex = i;
+      //if we have found a match, we don't need to find an out of date
+      break;
+    }
+  }
+  
+  //update the lastSeenAt if we have a match
+  if(matchingIndex >= 0) {
+    //if we found a match, update that record if it's newer
+    if(difftime(seenAt, records[matchingIndex].lastSeenAt) > 0)
+      records[matchingIndex].lastSeenAt = seenAt;
+  } else if(outOfDateIndex >= 0) {
+    //if we didn't find a match, but we found an out of date record
+    //put our new record at that location
+    strncpy(records[outOfDateIndex].hostAddr, newHostAddr, INET_ADDRSTRLEN);
+    records[outOfDateIndex].lastSeenAt = seenAt;
+  } else {
+    perror("Out of space for records. Please increase MAX_STORED_HOSTS.");
+    exit(1);
+  }
 }
 
 void addOrUpdateHostNow(char* newHostAddr) {
@@ -149,6 +173,21 @@ void addOrUpdateHostNow(char* newHostAddr) {
 
 int req_is_alive(char* request) {
   if(strncmp(request, "alive\n", 6) == 0) {
+    //add the hosts from the message to our records
+    char newHost[INET_ADDRSTRLEN];
+    time_t remoteSeenAt;
+    
+    char* nextLine = request;
+    while((nextLine = strchr(nextLine, '\n')) != NULL) {
+      //get past the newline
+      nextLine++;
+      if(*nextLine == '\0')
+	break;
+      //read in the host and when it was last seen
+      sscanf(nextLine, "%s %ld", newHost, &remoteSeenAt);
+      addOrUpdateHost(newHost, remoteSeenAt);
+    }
+    
     return 1;
   }
   return 0;
@@ -162,14 +201,20 @@ void initDiscovery(int inputPort, int udp_sock) {
   memset(&bcast_addrs, 0, sizeof(struct sockaddr_in) * NUM_BROADCAST_ADDRS);
   
   bcast_addrs[0].sin_family=PF_INET;
-  bcast_addrs[1].sin_family=PH_INET;
+  bcast_addrs[1].sin_family=PF_INET;
+  bcast_addrs[2].sin_family=PF_INET;
+  bcast_addrs[3].sin_family=PF_INET;
 
-  inet_aton("130.64.23.255", bcast_addrs[0].sin_addr);
-  inet_aton("10.255.255.255", bcast_addrs[1].sin_addr);
+  inet_aton("130.64.23.255", &bcast_addrs[0].sin_addr);
+  inet_aton("10.4.255.255", &bcast_addrs[1].sin_addr);
+  inet_aton("10.5.255.255", &bcast_addrs[2].sin_addr);
+  inet_aton("10.3.1.255", &bcast_addrs[3].sin_addr);
 
 
   bcast_addrs[0].sin_port = htons(port);
   bcast_addrs[1].sin_port = htons(port);
+  bcast_addrs[2].sin_port = htons(port);
+  bcast_addrs[3].sin_port = htons(port);
   
   //set up the records array
   records = (hostRecord*) malloc(sizeof(hostRecord) * MAX_STORED_HOSTS);

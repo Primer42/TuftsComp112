@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
     listen(tcp_sock, 5);
 
     /* Start the discovery signal */
-    initDiscovery(port, send_udp_sock);
+    initDiscovery(serv_port, send_udp_sock);
 
     for(;;) {
 
@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
 
 	/* wait for a connection from a client; this is an iterative server */
 	reqlen = sizeof(cli_addr);
-	new_tcp_sock = accept_or_udp(tcp_sock, (struct sockaddr *) &cli_addr, &reqlen,udp_sock);
+	new_tcp_sock = accept_or_udp(tcp_sock, (struct sockaddr *) &cli_addr, &reqlen,recv_udp_sock);
 		   
 	if(new_tcp_sock < 0) {
 	     perror("can't bind local address");
@@ -324,7 +324,7 @@ int main(int argc, char *argv[])
 	} 	
 
 	/* read a message from the client */
-	reqlen = read_line_or_udp(new_tcp_sock, request, MAXMESG, udp_sock); 
+	reqlen = read_line_or_udp(new_tcp_sock, request, MAXMESG, recv_udp_sock); 
 	flog("received '%s'", request);
 	if (req_is_get(request,filename)) { 
 	    if (get(filename,&contents,&filesize)) { 
@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
 	    contents = (char *)malloc(filesize); 	
 	    int bytesread = 0; 
 	    if ((bytesread=read_block_or_udp(new_tcp_sock,contents,
-		filesize,udp_sock))==filesize) { 
+		filesize,recv_udp_sock))==filesize) { 
 		if (put(filename,contents,filesize)) { 
 		    ok(new_tcp_sock); 
 		} else { 

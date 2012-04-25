@@ -56,6 +56,9 @@ void udp(int sockfd) {
 	cli_dotted, MAXADDR);
     flog("udp connection from %s\n",cli_dotted);
 
+    //add it to our seen hosts
+    addOrUpdateHostNow(cli_dotted);
+
     /* convert numeric internet address to name */
     cli_ulong = cli_addr.sin_addr.s_addr;
     cli_hostent = gethostbyaddr((char *)&cli_ulong, 
@@ -67,6 +70,10 @@ void udp(int sockfd) {
     }
     message[mesglen]='\0'; // moot point; makes it a string if possible
     flog("message is '%s'",message); 
+
+    req_is_alive(message);
+    
+    
 } 
 
 /* get a file from storage;
