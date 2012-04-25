@@ -13,3 +13,6 @@ a2/server
 a2/CLIENT
 a2/SERVER
 a5/nose
+
+#ignore any core dumps
+core.*
