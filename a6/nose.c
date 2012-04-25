@@ -179,7 +179,6 @@ void initDiscovery(int inputPort, int udp_sock) {
   signal(SIGALRM, checkHostsAliveSignalHandler);
   //start the SIGALRM
   raise(SIGALRM);
-  
 }
 
 /* int main(int argc, char** argv) { */
