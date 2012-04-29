@@ -73,10 +73,10 @@ int get_primary_addr(struct in_addr *a) {
 void signalHandler(int sig) {
   if(sig == SIGALRM) {
     //send out our broadcast packet
-    char* send_line = "testing"; //it doesn't really matter what we say, for now
+    char* send_line = "testing 999.999.999.999"; //it doesn't really matter what we say, for now
     //send the packet - all of the necessary variables have been initialized already
     sendto(send_sockfd, (void*) send_line, strlen(send_line), 0, (struct sockaddr *)&bcast_addr, (socklen_t) sizeof(bcast_addr));
-    
+
     //set the alarm for the next broadcast
     alarm(BROADCAST_EVERY);
 
