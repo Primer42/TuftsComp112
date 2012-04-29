@@ -18,7 +18,7 @@
 
 //if DEAD_THRESHOLD is less than BROADCAST_EVERY, we will not find ourselves
 #define DEAD_THRESHOLD 4
-#define NUM_BROADCAST_ADDRS 2
+#define NUM_BROADCAST_ADDRS 1
 
 /*This is the array of host records.
 It is going to initialized to all 0's.
@@ -202,12 +202,12 @@ void initDiscovery(int inputPort, int udp_sock) {
   memset(&bcast_addrs, 0, sizeof(struct sockaddr_in) * NUM_BROADCAST_ADDRS);
   
   bcast_addrs[0].sin_family=PF_INET;
-  bcast_addrs[1].sin_family=PF_INET;
+  //  bcast_addrs[1].sin_family=PF_INET;
   //bcast_addrs[2].sin_family=PF_INET;
   //bcast_addrs[3].sin_family=PF_INET;
 
-  inet_aton("130.64.23.255", &bcast_addrs[0].sin_addr);
-  inet_aton("10.4.1.255", &bcast_addrs[1].sin_addr);
+  //inet_aton("130.64.23.255", &bcast_addrs[0].sin_addr);
+  inet_aton("10.4.1.255", &bcast_addrs[0].sin_addr);
   
   //inet_aton("130.64.23.141", &bcast_addrs[0].sin_addr);
   //inet_aton("136.64.23.142", &bcast_addrs[1].sin_addr);
@@ -219,7 +219,7 @@ void initDiscovery(int inputPort, int udp_sock) {
 
 
   bcast_addrs[0].sin_port = htons(port);
-  bcast_addrs[1].sin_port = htons(port);
+  //  bcast_addrs[1].sin_port = htons(port);
   // bcast_addrs[2].sin_port = htons(port);
   //bcast_addrs[3].sin_port = htons(port);
   
