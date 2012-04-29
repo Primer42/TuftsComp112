@@ -51,14 +51,19 @@ int accept_or_udp(int tcpsock, struct sockaddr *addr,
     // return accept(tcpsock, addr, addrlen); 
 
     while (TRUE) { 
-	/* Watch stdin (fd 0) to see when it has input. */
-	FD_ZERO(&rfds); FD_SET(tcpsock, &rfds); FD_SET(udpsock, &rfds); 
-	FD_ZERO(&wfds); FD_ZERO(&efds); 
-	if (select((tcpsock>udpsock?tcpsock:udpsock)+1, 
-	    &rfds, &wfds, &efds, NULL))  {
-	    if (FD_ISSET(udpsock,&rfds)) udp(udpsock);  
-	    if (FD_ISSET(tcpsock,&rfds)) return accept(tcpsock,addr,addrlen); 
-	} 
+      /* Watch stdin (fd 0) to see when it has input. */
+      FD_ZERO(&rfds); FD_SET(tcpsock, &rfds); FD_SET(udpsock, &rfds); 
+      FD_ZERO(&wfds); FD_ZERO(&efds); 
+      if (select((tcpsock>udpsock?tcpsock:udpsock)+1, 
+		 &rfds, &wfds, &efds, NULL))  {
+	if (FD_ISSET(udpsock,&rfds)) {
+	  udp(udpsock);
+	  continue;
+	}
+	if (FD_ISSET(tcpsock,&rfds)) {
+	  return accept(tcpsock,addr,addrlen); 
+	}
+      }
     } 
 } 
 
@@ -303,8 +308,8 @@ int main(int argc, char *argv[])
 	struct hostent *cli_hostent;        /* host entry */
 
 	/* wait for a connection from a client; this is an iterative server */
-	reqlen = sizeof(cli_addr);
-	new_tcp_sock = accept_or_udp(tcp_sock, (struct sockaddr *) &cli_addr, &reqlen,recv_udp_sock);
+	reqlen = (socklen_t) sizeof(cli_addr);
+	new_tcp_sock = accept_or_udp(tcp_sock, (struct sockaddr *) &cli_addr, &reqlen, recv_udp_sock);
 		   
 	if(new_tcp_sock < 0) {
 	     perror("can't bind local address");
@@ -364,26 +369,3 @@ int main(int argc, char *argv[])
 	// print_all(); 
     }  
 }
-
-// In file included from squirrel.c:12:
-// operations.h:3: warning: declaration of `socket' shadows a global declaration
-// /usr/include/sys/socket.h:100: warning: shadowed declaration is here
-// squirrel.c: In function `accept_or_udp':
-// squirrel.c:47: warning: unused variable `retval'
-// squirrel.c: In function `read_or_udp':
-// squirrel.c:74: warning: implicit declaration of function `read'
-// squirrel.c:66: warning: unused variable `retval'
-// squirrel.c: At top level:
-// squirrel.c:80: warning: declaration of `udp' shadows a global declaration
-// operations.h:3: warning: shadowed declaration is here
-// squirrel.c:92: warning: declaration of `udp' shadows a global declaration
-// operations.h:3: warning: shadowed declaration is here
-// squirrel.c: In function `ok':
-// squirrel.c:158: warning: implicit declaration of function `write'
-// squirrel.c: In function `main':
-// squirrel.c:218: warning: implicit declaration of function `exit'
-// squirrel.c:303: warning: implicit declaration of function `free'
-// squirrel.c:309: warning: declaration of `contents' shadows a previous local
-// squirrel.c:211: warning: shadowed declaration is here
-// squirrel.c:309: warning: implicit declaration of function `malloc'
-// squirrel.c:334: warning: implicit declaration of function `close'

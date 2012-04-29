@@ -18,7 +18,7 @@
 
 //if DEAD_THRESHOLD is less than BROADCAST_EVERY, we will not find ourselves
 #define DEAD_THRESHOLD 4
-#define NUM_BROADCAST_ADDRS 4
+#define NUM_BROADCAST_ADDRS 2
 
 /*This is the array of host records.
 It is going to initialized to all 0's.
@@ -118,7 +118,6 @@ void checkHostsAliveSignalHandler(int sig) {
     }
 
     flog("Sending message '%s' on socket %d\n", send_line, send_sockfd);
-    printf("'%s'\n", send_line);
     
     //send the packet - all of the necessary variables have been initialized already
     for(i = 0; i < NUM_BROADCAST_ADDRS; ++i) {
@@ -165,6 +164,8 @@ void addOrUpdateHost(char* newHostAddr, time_t seenAt) {
     perror("Out of space for records. Please increase MAX_STORED_HOSTS.");
     exit(1);
   }
+
+  flog("Done adding host %s", newHostAddr);
 }
 
 void addOrUpdateHostNow(char* newHostAddr) {
@@ -202,19 +203,25 @@ void initDiscovery(int inputPort, int udp_sock) {
   
   bcast_addrs[0].sin_family=PF_INET;
   bcast_addrs[1].sin_family=PF_INET;
-  bcast_addrs[2].sin_family=PF_INET;
-  bcast_addrs[3].sin_family=PF_INET;
+  //bcast_addrs[2].sin_family=PF_INET;
+  //bcast_addrs[3].sin_family=PF_INET;
 
   inet_aton("130.64.23.255", &bcast_addrs[0].sin_addr);
-  inet_aton("10.4.255.255", &bcast_addrs[1].sin_addr);
-  inet_aton("10.5.255.255", &bcast_addrs[2].sin_addr);
-  inet_aton("10.3.1.255", &bcast_addrs[3].sin_addr);
+  inet_aton("10.4.1.255", &bcast_addrs[1].sin_addr);
+  
+  //inet_aton("130.64.23.141", &bcast_addrs[0].sin_addr);
+  //inet_aton("136.64.23.142", &bcast_addrs[1].sin_addr);
+
+
+  //  inet_aton("10.4.2.255", &bcast_addrs[1].sin_addr);
+  //  inet_aton("10.5.2.255", &bcast_addrs[2].sin_addr);
+  //  inet_aton("10.3.1.255", &bcast_addrs[3].sin_addr);
 
 
   bcast_addrs[0].sin_port = htons(port);
   bcast_addrs[1].sin_port = htons(port);
-  bcast_addrs[2].sin_port = htons(port);
-  bcast_addrs[3].sin_port = htons(port);
+  // bcast_addrs[2].sin_port = htons(port);
+  //bcast_addrs[3].sin_port = htons(port);
   
   //set up the records array
   records = (hostRecord*) malloc(sizeof(hostRecord) * MAX_STORED_HOSTS);
@@ -225,112 +232,3 @@ void initDiscovery(int inputPort, int udp_sock) {
   //start the SIGALRM
   raise(SIGALRM);
 }
-
-/* int main(int argc, char** argv) { */
-
-/*   if(argc != 2) { */
-/*     fprintf(stderr, "%s usage: %s port\n", argv[0], argv[0]); */
-/*     exit(1); */
-/*   } */
-
-/*   //read in the port */
-/*   port = atoi(argv[1]); */
-
-/*   //make sure it's valid */
-/*   if (port<9000 || port>32767) {  */
-/*     fprintf(stderr, "%s: port %d is not allowed\n", argv[0], port);  */
-/*     exit(1);  */
-/*   }  */
-
-/*   //initialize the variables for the send method */
-/*   send_sockfd = socket(PF_INET, SOCK_DGRAM, 0); */
-
-/*   if (send_sockfd < 0) { */
-/*     perror("socket:"); */
-/*   } */
-
-/*   /\* allow broadcasts on the send socket*\/  */
-/*   const int broadcast=1; */
-/*   if((setsockopt(send_sockfd,SOL_SOCKET,SO_BROADCAST, */
-/* 		 &broadcast,sizeof broadcast))) { */
-/*     perror("setsockopt - SO_SOCKET "); */
-/*     exit(1);  */
-/*   }  */
-
-/*   /\* set send target broadcast address *\/  */
-/*   memset(&bcast_addr, 0, sizeof(bcast_addr)); */
-/*   bcast_addr.sin_family = PF_INET; */
-/*   bcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST); */
-/*   bcast_addr.sin_port = htons(port); */
-
-/*   //set up the records array */
-/*   records = (hostRecord*) malloc(sizeof(hostRecord) * MAX_STORED_HOSTS); */
-/*   memset(records, 0, sizeof(hostRecord) * MAX_STORED_HOSTS); */
-
-/*   //set up signal handling method */
-/*   signal(SIGALRM, checkHostsAliveSignalHandler); */
-/*   //start the SIGALRM */
-/*   raise(SIGALRM); */
-
-/*   //start dealing with recieving packets */
-
-/*   /\* receiver data *\/  */
-/*   struct sockaddr_in recv_addr; 	/\* server address *\/  */
-/*   /\* message data *\/  */
-/*   int mesglen; char message[MAX_MESG]; */
-/*   /\* sender data *\/  */
-/*   struct sockaddr_in send_addr; 	/\* raw sender address *\/  */
-/*   socklen_t send_len; 			/\* length used *\/  */
-/*   char send_dotted[INET_ADDRSTRLEN]; 	/\* string ip address *\/  */
-/*   int recv_sockfd; */
-
-/*   //make the recieving socket */
-/*   recv_sockfd = socket(PF_INET, SOCK_DGRAM, 0); */
-
-/*   if (recv_sockfd < 0) { */
-/*     perror("socket:"); */
-/*   } */
-
-/*   /\* allow broadcasts on the recieving socket*\/  */
-/*   if((setsockopt(recv_sockfd,SOL_SOCKET,SO_BROADCAST, */
-/* 		 &broadcast,sizeof broadcast))) { */
-/*     perror("setsockopt - SO_SOCKET "); */
-/*     exit(1);  */
-/*   }  */
-
-
-/*   /\* get the primary IP address of this host *\/  */
-/*   struct in_addr primary;  */
-/*   get_primary_addr(&primary);  */
-/*   char primary_dotted[INET_ADDRSTRLEN];  */
-/*   inet_ntop(PF_INET, &primary, primary_dotted, INET_ADDRSTRLEN); */
-/*   fprintf(stderr, "%s: Running on %s, port %d\n", argv[0], */
-/* 	  primary_dotted, port);  */
-  
-/*   //initialize the recv_addr */
-/*   memset(&recv_addr, 0, sizeof(recv_addr)); */
-/*   recv_addr.sin_family      = PF_INET; */
-/*   // must use INADDR_ANY to receive broadcasts */
-/*   recv_addr.sin_addr.s_addr = htonl(INADDR_ANY); */
-/*   recv_addr.sin_port        = htons(port); */
-  
-/*   /\* bind it to the primary address and selected port on this host *\/  */
-/*   if (bind(recv_sockfd, (struct sockaddr *) &recv_addr, sizeof(recv_addr))<0)  */
-/*     perror("bind");  */
-  
-/*   for ( ; ; ) { */
-/*     /\* get a datagram *\/  */
-/*     send_len = (socklen_t) sizeof(send_addr); /\* MUST initialize this *\/  */
-/*     mesglen = recvfrom(recv_sockfd, message, MAX_MESG, 0,  */
-/* 		       (struct sockaddr *) &send_addr, &send_len); */
-    
-/*     if (mesglen>=0) {  */
-/*       /\* get numeric internet address *\/ */
-/*       inet_ntop(PF_INET, (void *)&(send_addr.sin_addr.s_addr),   */
-/* 		send_dotted, INET_ADDRSTRLEN); */
-/*       addOrUpdateHost(send_dotted); */
-/*     } else {  */
-/*       perror("receive failed");  */
-/*     }  */
-/*   } */
-/* } */

@@ -35,45 +35,43 @@ static void flog(const char *fmt, ...) {
 /* called when udp datagram available on a socket 
  * socket: number of socket */ 
 void udp(int sockfd) { 
-    /* client data */
-    struct sockaddr_in cli_addr;        /* raw client address */
-    int cli_len;                        /* length used */
-    char cli_dotted[MAXADDR];           /* string ip address */
-    unsigned long cli_ulong;            /* packed ip address */
-    struct hostent *cli_hostent;        /* host entry */
-    /* message parameters */ 
-    char message[MAXMESG]; 		/* message to be read */ 
-    int mesglen=0; 			/* message length */ 
-
-    flog("udp datagram available on socket %d\n",sockfd); 
-
-    /* get a datagram */
-    cli_len = sizeof(cli_addr); /* MUST initialize this */
-    mesglen = recvfrom(sockfd, message, MAXMESG, 0,
-        (struct sockaddr *) &cli_addr, &cli_len);
-    /* get numeric internet address */
-    inet_ntop(PF_INET, (void *)&(cli_addr.sin_addr.s_addr),
-	cli_dotted, MAXADDR);
-    flog("udp connection from %s\n",cli_dotted);
-
-    //add it to our seen hosts
-    addOrUpdateHostNow(cli_dotted);
-
-    /* convert numeric internet address to name */
-    cli_ulong = cli_addr.sin_addr.s_addr;
-    cli_hostent = gethostbyaddr((char *)&cli_ulong, 
-	    	sizeof(cli_ulong),PF_INET);
-    if (cli_hostent) {
-	flog("udp host name is %s\n", cli_hostent->h_name);
-    } else {
-	flog("no name for udp host\n");
-    }
-    message[mesglen]='\0'; // moot point; makes it a string if possible
-    flog("message is '%s'",message); 
-
-    req_is_alive(message);
-    
-    
+  /* client data */
+  struct sockaddr_in cli_addr;        /* raw client address */
+  int cli_len;                        /* length used */
+  char cli_dotted[MAXADDR];           /* string ip address */
+  unsigned long cli_ulong;            /* packed ip address */
+  struct hostent *cli_hostent;        /* host entry */
+  /* message parameters */ 
+  char message[MAXMESG]; 		/* message to be read */ 
+  int mesglen=0; 			/* message length */ 
+  
+  flog("udp datagram available on socket %d\n",sockfd); 
+  
+  /* get a datagram */
+  cli_len = sizeof(cli_addr); /* MUST initialize this */
+  mesglen = recvfrom(sockfd, message, MAXMESG, 0,
+		     (struct sockaddr *) &cli_addr, &cli_len);
+  /* get numeric internet address */
+  inet_ntop(PF_INET, (void *)&(cli_addr.sin_addr.s_addr),
+	    cli_dotted, MAXADDR);
+  flog("udp connection from %s\n",cli_dotted);
+  
+  //add it to our seen hosts
+  addOrUpdateHostNow(cli_dotted);
+  
+  /* convert numeric internet address to name */
+  cli_ulong = cli_addr.sin_addr.s_addr;
+  cli_hostent = gethostbyaddr((char *)&cli_ulong, 
+			      sizeof(cli_ulong),PF_INET);
+  if (cli_hostent) {
+    flog("udp host name is %s\n", cli_hostent->h_name);
+  } else {
+    flog("no name for udp host\n");
+  }
+  message[mesglen]='\0'; // moot point; makes it a string if possible
+  flog("message is '%s'",message); 
+  
+  req_is_alive(message);
 } 
 
 /* get a file from storage;
