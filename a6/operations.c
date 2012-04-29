@@ -34,7 +34,7 @@ static void flog(const char *fmt, ...) {
 
 /* called when udp datagram available on a socket 
  * socket: number of socket */ 
-void udp(int sockfd) { 
+void udp(int sockfd) {
   /* client data */
   struct sockaddr_in cli_addr;        /* raw client address */
   int cli_len;                        /* length used */
@@ -93,7 +93,7 @@ int get(char *name, char **content, int *size) {
 	    **content=0; 
 	} 
 	return TRUE; 
-    } else { 
+    } else {
 	return FALSE; 
     } 
 } 
