@@ -91,7 +91,7 @@ struct block_network {
 
 // command to the server : which blocks of what file to get
 struct command { 
-  char* identifier = "requestRange";
+  char type[MAXNAME];
   char filename[MAXNAME]; 
 #ifndef V2
   uint32_t nranges; 

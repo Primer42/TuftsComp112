@@ -69,6 +69,7 @@ void requestMissingBlocks(int sockfd, int port, const char* filename, struct bit
   strcpy(cmd.filename, filename);
   int constructingRange = FALSE;
   cmd.nranges = 0;
+  strncpy(cmd.type, "requestRange", 12);
   int block;
 
   numBlocksRecieved = 0;
