@@ -17,8 +17,10 @@
 
 #ifndef V2
 #include "help.h" 
+#include "storage.h"
 #else /* V2 */
-#include "help-v2.h" 
+#include "help-v2.h"
+#include "storage.h" 
 #endif /* V2 */
 #define TRUE  1
 #define FALSE 0 
@@ -100,7 +102,7 @@ struct job {
     struct bits todo; 			// bitfield of records to send
     int filefd; 			// open file descriptor 
     int sockfd; 			// bound socket 
-    char filename[FILENAMESIZE]; 	// filename for reference 
+    char filename[MAXNAME]; 	// filename for reference 
     struct sockaddr_in client_addr; 	// recipient IP and port
 #ifndef V2
     int which; 				// which block to do next 
@@ -168,7 +170,7 @@ void *job_thread(void *input) {
 				fprintf(stderr, "server thread: error reading block %d of %s, aborting.\n", j->which, j->filename); 
 				exit(1); 
 			    } 
-			    strncpy(loc_blk.filename, j->filename, FILENAMESIZE); 
+			    strncpy(loc_blk.filename, j->filename, MAXNAME); 
 			/* get readable internet address */
 			    char client_dotted[INET_ADDRSTRLEN]; 	/* string ip address */ 
 			    inet_ntop(PF_INET, (void *)&(j->client_addr.sin_addr.s_addr),  
@@ -225,22 +227,22 @@ int read_block(int fd, struct block *local, uint64_t bnum) {
     fstat(fd, &st); 
 #ifndef V2
     int bytes = st.st_size; 
-    int blocks = bytes/PAYLOADSIZE; 
+    int blocks = bytes/BLOCKSIZE; 
 #else /* V2 */
     uint64_t bytes = st.st_size; 
-    uint64_t blocks = bytes/PAYLOADSIZE; 
+    uint64_t blocks = bytes/BLOCKSIZE; 
 #endif /* V2 */
-    if (bytes%PAYLOADSIZE!=0) blocks++; 
+    if (bytes%BLOCKSIZE!=0) blocks++; 
     local->which_block = bnum; 
     local->total_blocks = blocks; 
 #ifndef V2
-    long payload_start= bnum*PAYLOADSIZE;
+    long payload_start= bnum*BLOCKSIZE;
 #else /* V2 */
-    uint64_t payload_start= bnum*PAYLOADSIZE;
+    uint64_t payload_start= bnum*BLOCKSIZE;
 #endif /* V2 */
     if (payload_start>=0 && payload_start<bytes) { 
 	lseek(fd, payload_start, SEEK_SET); 
-	local->paysize = read(fd, local->payload, PAYLOADSIZE); 
+	local->paysize = read(fd, local->payload, BLOCKSIZE); 
 	return 0; 
      } else { 
 	return -1; // non-existent block
@@ -396,7 +398,7 @@ again:
         pthread_mutex_lock(&safetomodify); 
 	struct job *j; 
         for (j=head; 
-             j && strncmp(j->filename,loc_cmd.filename,FILENAMESIZE)!=0; 
+             j && strncmp(j->filename,loc_cmd.filename,MAXNAME)!=0; 
              j=j->next); 
         if (j) { 
         /* update existing job record for new request */ 
@@ -430,8 +432,8 @@ again:
 	/* read initial block of file to set up parameters */ 
 	    struct block loc_blk; 
 	    if (read_block(fd, &loc_blk, 0L)==0) { 
-		strncpy(loc_blk.filename, loc_cmd.filename, FILENAMESIZE); 
-		memset(loc_blk.payload, 1, PAYLOADSIZE); // ANTIBUGGING flag
+		strncpy(loc_blk.filename, loc_cmd.filename, MAXNAME); 
+		memset(loc_blk.payload, 1, BLOCKSIZE); // ANTIBUGGING flag
 	    /* make up a job of blocks to be transferred */ 
 		j = (struct job *) malloc (sizeof(struct job)); 
 	    /* record the file to send */ 
@@ -446,7 +448,7 @@ again:
 	    /* save client destination */ 
 		memcpy(&(j->client_addr), &cmd_addr, sizeof(struct sockaddr_in)); 
 	    /* save file name */ 
-		strncpy(j->filename,loc_cmd.filename,FILENAMESIZE); 
+		strncpy(j->filename,loc_cmd.filename,MAXNAME); 
 	    /* mark ranges */ 
 		int range; 
 		// fprintf(stderr, "nranges = %d\n", loc_cmd.nranges); 

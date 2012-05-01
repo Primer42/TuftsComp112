@@ -65,24 +65,24 @@ static void flog(const char *fmt, ...) {
 // this is used to avoid listening (by default) on 
 // maintenance interfaces. 
 // taken from halligan.c
-int get_primary_addr(struct in_addr *a) { 
-    struct ifaddrs * ifAddrStruct=NULL;
-    struct ifaddrs * ifa=NULL;
-    if (!getifaddrs(&ifAddrStruct)) // get linked list of interface specs
-	for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
-	    if (ifa ->ifa_addr->sa_family==AF_INET) {  // is an IP4 Address
-		if (strcmp(ifa->ifa_name,"eth0")==0) { // is for interface eth0
-		    void *tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)
-			->sin_addr;
-		    memcpy(a, tmpAddrPtr, sizeof(struct in_addr)); 
-		    if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
-		    return 0; // found 
-		} 
-	    } 
-	}
-    if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
-    return -1; // not found
-} 
+/* int get_primary_addr(struct in_addr *a) {  */
+/*     struct ifaddrs * ifAddrStruct=NULL; */
+/*     struct ifaddrs * ifa=NULL; */
+/*     if (!getifaddrs(&ifAddrStruct)) // get linked list of interface specs */
+/* 	for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) { */
+/* 	    if (ifa ->ifa_addr->sa_family==AF_INET) {  // is an IP4 Address */
+/* 		if (strcmp(ifa->ifa_name,"eth0")==0) { // is for interface eth0 */
+/* 		    void *tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr) */
+/* 			->sin_addr; */
+/* 		    memcpy(a, tmpAddrPtr, sizeof(struct in_addr));  */
+/* 		    if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct); */
+/* 		    return 0; // found  */
+/* 		}  */
+/* 	    }  */
+/* 	} */
+/*     if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct); */
+/*     return -1; // not found */
+/* } */ 
 
 hostRecord* getHostRecordAt(int i) {
   if(i < 0 || i > MAX_STORED_HOSTS) {

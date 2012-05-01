@@ -79,12 +79,18 @@ void udp(int sockfd) {
  * content: an array of content (result parameter)
  * size: size of file */ 
 int get(char *name, char **content, int *size) { 
-    if (get_size(name)>=0) {  
+    if (get_size(name)>=0) {
 	int blocks; 
 	*size=get_size(name); 
 	blocks = (*size%BLOCKSIZE==0?*size/BLOCKSIZE:*size/BLOCKSIZE+1); 
+	//make the name into hostaddr-name
+	
+	//broadcast range request
+
 	if (blocks>0) { 
 	    *content= (char *)malloc(BLOCKSIZE*blocks); 
+	    //store contents address somewhere so we can refer to it globally
+	    //as blocks come in from other hosts
 	    int i;
 	    for (i=0; i<blocks; i++) 
 		get_fblock(name,i,*content+i*BLOCKSIZE); 

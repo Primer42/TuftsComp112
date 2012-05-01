@@ -281,8 +281,8 @@ void block_local_to_network(struct block *local, struct block_network *net) {
     net->total_blocks = hton64(local->total_blocks); 
     net->paysize = hton64(local->paysize); 
 #endif /* V2 */
-    memcpy(net->filename, local->filename, FILENAMESIZE); 
-    memcpy(net->payload, local->payload,   PAYLOADSIZE); 
+    memcpy(net->filename, local->filename, MAXNAME); 
+    memcpy(net->payload, local->payload,   BLOCKSIZE); 
 } 
 
 // translate a network binary structure to local order 
@@ -297,8 +297,8 @@ void block_network_to_local(struct block *local, struct block_network *net) {
     local->total_blocks = ntoh64(net->total_blocks); 
     local->paysize = ntoh64(net->paysize); 
 #endif /* V2 */
-    memcpy(local->filename, net->filename,  FILENAMESIZE); 
-    memcpy(local->payload, net->payload,  PAYLOADSIZE); 
+    memcpy(local->filename, net->filename,  MAXNAME); 
+    memcpy(local->payload, net->payload,  BLOCKSIZE); 
 } 
 
 // translate a local binary structure to network order 
@@ -308,7 +308,7 @@ void command_local_to_network(struct command *local, struct command *network) {
 void command_local_to_network(struct command *local, struct command_network *network) {
 #endif /* V2 */
     int i; 
-    memcpy(network->filename, local->filename, FILENAMESIZE); 
+    memcpy(network->filename, local->filename, MAXNAME); 
 #ifndef V2
     network->nranges = htonl(local->nranges); 
 #else /* V2 */
@@ -332,7 +332,7 @@ void command_network_to_local(struct command *local, struct command *network) {
 void command_network_to_local(struct command *local, struct command_network *network) {
 #endif /* V2 */
     int i; 
-    memcpy(local->filename, network->filename,  FILENAMESIZE); 
+    memcpy(local->filename, network->filename,  MAXNAME); 
 #ifndef V2
     local->nranges = ntohl(network->nranges); 
 #else /* V2 */
@@ -403,7 +403,7 @@ again:
 	return resp_mesglen; 
     /* check for erronious packets */ 
     } else if (resp_mesglen!=sizeof(net_blk)) { 
-	fprintf(stderr, "recv_block: received %d bytes, expected %d", 
+	fprintf(stderr, "recv_block: received %d bytes, expected %ld", 
 		resp_mesglen, sizeof(struct block)); 
         fprintf(stderr, " -- ignoring bad input\n"); 
 	goto again; 
@@ -418,7 +418,6 @@ int select_block(int sockfd, int seconds, int microsec) {
   /* set up a timeout wait for input */ 
     struct timeval tv;
     fd_set rfds;
-    int retval;
   /* Watch sockfd to see when it has input. */
     FD_ZERO(&rfds);
     FD_SET(sockfd, &rfds);

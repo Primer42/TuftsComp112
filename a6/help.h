@@ -1,5 +1,5 @@
 #ifndef __HELP_H__
-#define __HELP_H__ 1
+#define __HELP_H__
 
 /*=============================
   helper routines for Assignment 2: torrents 
@@ -21,6 +21,8 @@
 #include <values.h> 
 #include <fcntl.h> 
 
+#include "storage.h"
+
 #ifdef V2
 /*=============================
    network portable 64-bit ints
@@ -38,8 +40,8 @@ extern uint64_t ntoh64(uint64_network_t bar);
   protocol definitions 
   =============================*/ 
 
-#define PAYLOADSIZE 128		/* file bytes per packet */ 
-#define FILENAMESIZE 48		/* limit on file name size */ 
+//#define PAYLOADSIZE 128		/* file bytes per packet */ 
+//#define FILENAMESIZE 48		/* limit on file name size */ 
 #define MAXRANGES    12		/* ranges in one command */ 
 
 // a range of blocks to send 
@@ -63,7 +65,7 @@ struct range_network {
 
 // a response from the server: a piece of a file 
 struct block { 
-    char filename[FILENAMESIZE]; 
+    char filename[MAXNAME]; 
 #ifndef V2
     uint32_t which_block; 
     uint32_t total_blocks; 
@@ -73,23 +75,23 @@ struct block {
     uint64_t total_blocks; 
     uint64_t paysize; 
 #endif /* V2 */
-    char payload[PAYLOADSIZE]; 
+    char payload[BLOCKSIZE]; 
 } ; 
 
 #ifdef V2
 // network-portable version
 struct block_network { 
-    char filename[FILENAMESIZE]; 
+    char filename[MAXNAME]; 
     uint64_network_t which_block; 
     uint64_network_t total_blocks; 
     uint64_network_t paysize; 
-    char payload[PAYLOADSIZE]; 
+    char payload[BLOCKSIZE]; 
 } ; 
 #endif /* V2 */
 
 // command to the server : which blocks of what file to get
 struct command { 
-    char filename[FILENAMESIZE]; 
+    char filename[MAXNAME]; 
 #ifndef V2
     uint32_t nranges; 
 #else /* V2 */
@@ -101,7 +103,7 @@ struct command {
 #ifdef V2
 // portable network version
 struct command_network { 
-    char filename[FILENAMESIZE]; 
+    char filename[MAXNAME]; 
     uint64_network_t nranges; 
     struct range_network ranges[MAXRANGES]; 
 } ; 
@@ -114,7 +116,7 @@ struct command_prefix {
 #else /* V2 */
 struct command_network_prefix { 
 #endif /* V2 */
-    char filename[FILENAMESIZE]; 
+    char filename[MAXNAME]; 
 #ifndef V2
     uint32_t nranges; 
     struct range ranges[1]; 

@@ -2,15 +2,16 @@ CFLAGS= -g -Wall
 OFLAGS= -c
 
 all: squirrel nuts udpclient
-squirrel: squirrel.o operations.o storage.o nose.o
-	gcc $(CFLAGS) -o squirrel squirrel.o operations.o storage.o nose.o
+squirrel: squirrel.o operations.o storage.o nose.o ft_recv.o help.o
+	gcc $(CFLAGS) -o squirrel squirrel.o operations.o storage.o nose.o ft_recv.o help.o 
+
 nuts: nuts.o
 	gcc $(CFLAGS) -o nuts nuts.o 
 
 nuts.o: nuts.c
 	gcc $(CFLAGS) $(OFLAGS) nuts.c
 
-operations.o: operations.c storage.h nose.h
+operations.o: operations.c storage.h nose.h ft_recv.h
 	gcc $(CFLAGS) $(OFLAGS) operations.c
 
 storage.o: storage.c storage.h
@@ -27,6 +28,12 @@ udpclient.o: udpclient.c
 
 nose.o: nose.c nose.h
 	gcc $(CFLAGS) $(OFLAGS) nose.c
+
+ft_recv.o: ft_recv.c ft_recv.h help.h nose.h storage.h
+	gcc $(CFLAGS) $(OFLAGS) ft_recv.c
+
+help.o: help.c help.h
+	gcc $(CFLAGS) $(OFLAGS) help.c
 
 clean:
 	rm -f squirrel
