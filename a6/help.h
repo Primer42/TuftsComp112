@@ -91,14 +91,15 @@ struct block_network {
 
 // command to the server : which blocks of what file to get
 struct command { 
-    char filename[MAXNAME]; 
+  char* identifier = "requestRange";
+  char filename[MAXNAME]; 
 #ifndef V2
-    uint32_t nranges; 
+  uint32_t nranges; 
 #else /* V2 */
-    uint64_t nranges; 
+  uint64_t nranges; 
 #endif /* V2 */
-    struct range ranges[MAXRANGES]; 
-} ; 
+  struct range ranges[MAXRANGES]; 
+}; 
 
 #ifdef V2
 // portable network version
