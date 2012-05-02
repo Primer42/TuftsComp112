@@ -27,7 +27,8 @@ static void flog(const char *fmt, ...) {
     vsnprintf(buf,MAXOUT,fmt,ap); 
     for (p=buf; *p && p-buf<MAXOUT; p++) 
 	if ((*p)>=' ') 
-	    putc(*p,stderr); 
+	    putc(*p,stderr);
+ 
     fprintf(stderr,"]\n"); 
     va_end(ap);
 } 

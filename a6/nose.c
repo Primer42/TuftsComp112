@@ -85,7 +85,7 @@ static void flog(const char *fmt, ...) {
 /* } */ 
 
 hostRecord* getHostRecordAt(int i) {
-  if(i < 0 || i > MAX_STORED_HOSTS) {
+  if(i < 0 || i >= MAX_STORED_HOSTS) {
     perror("Index out of range");
     return NULL;
   }
@@ -97,6 +97,16 @@ hostRecord* getHostRecordAt(int i) {
 
   return & records[i];
 }
+
+hostRecord* chooseRandomHost() {
+  int randNum;
+  hostRecord* curChoice;
+  do {
+    randNum = rand() % MAX_STORED_HOSTS;
+  } while((curChoice = getHostRecordAt(randNum)) != NULL);
+  return curChoice;
+}
+
 
 //this method handles our SIGALRM signals
 //this is how we'll send out broadcast ping every 5 seconds

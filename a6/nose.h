@@ -16,6 +16,7 @@ typedef struct _host_record{
 void addOrUpdateHost(char* newHostAddr, time_t seenAt);
 void addOrUpdateHostNow(char* newHostAddr);
 hostRecord* getHostRecordAt(int i);
+hostRecord* chooseRandomHost();
 void initDiscovery(int inputPort, int udp_sock);
 int req_is_alive(char* request);
 

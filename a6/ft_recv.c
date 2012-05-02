@@ -17,6 +17,36 @@
 
 #include "ft_recv.h"
 
+int req_is_block_to_store(char* request, int send_sockfd, struct sockaddr_in* sender_addr) {
+  struct block locBlk;
+  struct block netBlk;
+  memset(&locBlk, 0, sizeof(locBlk));
+  memset(&netBlk, 0, sizeof(netBlk));
+
+  if(strlen(request) != sizeof(netBlk)) {
+    return FALSE;
+  }
+
+  netBlk = *((struct block*) request);
+
+  block_network_to_local(&locBlk, &netBlk);
+
+  int n = next_cblock();
+  if(n >=0) {
+    if(rememeber_fblock(locBlk.filename, locBlk.which_block, loc_block.payload)) {
+      //ack it
+      char* ack = "ACK";
+      sendto(send_sockfd, ack, sizeof(ack), 0, (struct sockaddr*) sender_addr, sizeof(sender_addr));
+    }
+  } else {
+    flog("no more cache!\n");
+    //remove oldest blocks?
+  }
+
+  return TRUE;
+}
+
+
 int numBlocksNeeded = MAXINT;
 int numBlocksRecieved = 0;
 

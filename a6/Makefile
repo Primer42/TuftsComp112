@@ -32,7 +32,7 @@ nose.o: nose.c nose.h
 ft_recv.o: ft_recv.c ft_recv.h help.h nose.h storage.h
 	gcc $(CFLAGS) $(OFLAGS) ft_recv.c
 
-ft_send.o: ft_send.c ft_send.h help.h storage.h
+ft_send.o: ft_send.c ft_send.h help.h storage.h nose.h
 	gcc $(CFLAGS) $(OFLAGS) ft_send.c
 
 help.o: help.c help.h
