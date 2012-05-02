@@ -44,7 +44,7 @@ static void flog(const char *fmt, ...) {
 
 /* create a select call to fire udp or accept, as relevant */ 
 int accept_or_udp(int tcpsock, struct sockaddr *addr, 
-		socklen_t *addrlen, int udpsock) { 
+		  socklen_t *addrlen, int recv_udpsock, int send_udpsock) { 
     fd_set rfds;
     fd_set wfds; 
     fd_set efds; 
@@ -52,12 +52,12 @@ int accept_or_udp(int tcpsock, struct sockaddr *addr,
 
     while (TRUE) { 
       /* Watch stdin (fd 0) to see when it has input. */
-      FD_ZERO(&rfds); FD_SET(tcpsock, &rfds); FD_SET(udpsock, &rfds); 
+      FD_ZERO(&rfds); FD_SET(tcpsock, &rfds); FD_SET(recv_udpsock, &rfds); 
       FD_ZERO(&wfds); FD_ZERO(&efds); 
       if (select((tcpsock>udpsock?tcpsock:udpsock)+1, 
 		 &rfds, &wfds, &efds, NULL))  {
 	if (FD_ISSET(udpsock,&rfds)) {
-	  udp(udpsock);
+	  udp(recv_udpsock, send_udpsock);
 	  continue;
 	}
 	if (FD_ISSET(tcpsock,&rfds)) {
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 
 	/* wait for a connection from a client; this is an iterative server */
 	reqlen = (socklen_t) sizeof(cli_addr);
-	new_tcp_sock = accept_or_udp(tcp_sock, (struct sockaddr *) &cli_addr, &reqlen, recv_udp_sock);
+	new_tcp_sock = accept_or_udp(tcp_sock, (struct sockaddr *) &cli_addr, &reqlen, recv_udp_sock, send_udp_sock);
 		   
 	if(new_tcp_sock < 0) {
 	     perror("can't bind local address");
@@ -333,7 +333,7 @@ int main(int argc, char *argv[])
 	reqlen = read_line_or_udp(new_tcp_sock, request, MAXMESG, recv_udp_sock); 
 	flog("received '%s'", request);
 	if (req_is_get(request,filename)) { 
-	    if (get(filename,&contents,&filesize)) { 
+	  if (get(filename,&contents,&filesize, serv_port, send_udp_sock)) { 
 		ok_get(new_tcp_sock,contents,filesize);
 		free(contents); 
 	    } else { 
@@ -345,7 +345,7 @@ int main(int argc, char *argv[])
 	    int bytesread = 0; 
 	    if ((bytesread=read_block_or_udp(new_tcp_sock,contents,
 		filesize,recv_udp_sock))==filesize) { 
-		if (put(filename,contents,filesize)) { 
+	      if (put(filename,contents,filesize, serv_port, send_udp_sock)) { 
 		    ok(new_tcp_sock); 
 		} else { 
 		    failed(new_tcp_sock); 

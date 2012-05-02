@@ -105,7 +105,7 @@ hostRecord* sendBlockToAHost(hostRecord* notThisHost, struct block netBlk, int s
   return h;
 }
 
-int distribute_file(char* name, char* contents, int numBocks, int sockfd, int port) {
+int distribute_file(char* name, char* contents, int numBocks, int send_sockfd, int recv_sockfd, int port) {
   if(numBlocks > 0) {
     int i;
     struct block curBlock;
@@ -123,7 +123,7 @@ int distribute_file(char* name, char* contents, int numBocks, int sockfd, int po
 
       //send the block to 2 hosts
       hostRecord* firstHost = sendBlockToAHost(NULL, net_blk, sockfd, port);
-      sendBlockToAHost(firstHost, net_blk, sockfd, port);
+      sendBlockToAHost(firstHost, net_blk, send_sockfd, recv_sockfd, port);
     }
 
   }

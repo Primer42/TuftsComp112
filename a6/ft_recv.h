@@ -14,7 +14,9 @@
 
 #define REQUEST_PERCENTAGE .75
 
-void request_file(char* filename, char* host_dotted, int port, int sockfd, int numBlocks, char** contents);
+int req_is_block_to_store(char* request, int send_sockfd, struct sockaddr_in* sender_addr);
+
+void request_file(char* filename, int port, int sockfd, int numBlocks, char** contents);
 
 
 #endif

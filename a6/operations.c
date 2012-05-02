@@ -35,7 +35,7 @@ static void flog(const char *fmt, ...) {
 
 /* called when udp datagram available on a socket 
  * socket: number of socket */ 
-void udp(int sockfd) {
+void udp(int recv_sockfd, int send_sockfd) {
   /* client data */
   struct sockaddr_in cli_addr;        /* raw client address */
   int cli_len;                        /* length used */
@@ -46,11 +46,11 @@ void udp(int sockfd) {
   char message[MAXMESG]; 		/* message to be read */ 
   int mesglen=0; 			/* message length */ 
   
-  flog("udp datagram available on socket %d\n",sockfd); 
+  flog("udp datagram available on socket %d\n",recv_sockfd); 
   
   /* get a datagram */
   cli_len = sizeof(cli_addr); /* MUST initialize this */
-  mesglen = recvfrom(sockfd, message, MAXMESG, 0,
+  mesglen = recvfrom(recv_sockfd, message, MAXMESG, 0,
 		     (struct sockaddr *) &cli_addr, &cli_len);
   /* get numeric internet address */
   inet_ntop(PF_INET, (void *)&(cli_addr.sin_addr.s_addr),
@@ -72,33 +72,54 @@ void udp(int sockfd) {
   message[mesglen]='\0'; // moot point; makes it a string if possible
   flog("message is '%s'",message); 
   
-  req_is_alive(message);
+  if(! (req_is_alive(message) || 
+	req_is_block_to_store(message, send_sockfd,cli_addr) ||
+	req_is_range(message, send_sockfd, cli_addr))) {
+    flog("UDP Datagram doesn't match any known form!");
+  }
 } 
+
+char* getFullName(char* name) {
+  //make the name into hostaddr-name
+  char fullName[MAXNAME];
+  fullName[0] = '\0';
+  struct sockaddr_in loc_sockaddr;
+  char loc_dotted[INET_ADDRSTRLEN];
+  get_primary_addr(&loc_sockaddr);
+  inet_ntop(PF_INET, &loc_sockaddr, loc_dotted, INET_ADDRSTRLEN);
+  strncat(fullName, loc_dotted, strlen(loc_dotted));
+  strncat(fullName, "-", 1);
+  strncat(fullName, name, strlen(name));
+  return fullName;
+}
 
 /* get a file from storage;
  * name: name of file (in local machine)
  * content: an array of content (result parameter)
  * size: size of file */ 
-int get(char *name, char **content, int *size) { 
-    if (get_size(name)>=0) {
-	int blocks; 
-	*size=get_size(name); 
-	blocks = (*size%BLOCKSIZE==0?*size/BLOCKSIZE:*size/BLOCKSIZE+1); 
-	//make the name into hostaddr-name
+int get(char *name, char **content, int *size, int port, int send_sockfd) { 
+  char* fullName = getFullName(name);
+  if (get_size(fullName)>=0) {
+    int blocks; 
+    *size=get_size(fullName); 
+    blocks = (*size%BLOCKSIZE==0?*size/BLOCKSIZE:*size/BLOCKSIZE+1); 
+
+    request_file(fullName, port, send_sockfd, blocks, content);
+	
 	
 	//broadcast range request
 
-	if (blocks>0) { 
-	    *content= (char *)malloc(BLOCKSIZE*blocks); 
-	    //store contents address somewhere so we can refer to it globally
-	    //as blocks come in from other hosts
-	    int i;
-	    for (i=0; i<blocks; i++) 
-		get_fblock(name,i,*content+i*BLOCKSIZE); 
-        } else { 
-	    *content = (char *)malloc(1*sizeof(char)); 
-	    **content=0; 
-	} 
+	/* if (blocks>0) {  */
+/* 	    *content= (char *)malloc(BLOCKSIZE*blocks);  */
+/* 	    //store contents address somewhere so we can refer to it globally */
+/* 	    //as blocks come in from other hosts */
+/* 	    int i; */
+/* 	    for (i=0; i<blocks; i++)  */
+/* 		get_fblock(name,i,*content+i*BLOCKSIZE);  */
+/*         } else {  */
+/* 	    *content = (char *)malloc(1*sizeof(char));  */
+/* 	    **content=0;  */
+/* 	}  */
 	return TRUE; 
     } else {
 	return FALSE; 
@@ -109,22 +130,26 @@ int get(char *name, char **content, int *size) {
  * name: local name of file. 
  * content: a character array of content. 
  * size: size of local file. */ 
-int put(char *name, char *content, int size) { 
+int put(char *name, char *content, int size, int port, int send_sockfd, int recv_sockfd) { 
     int blocks; 
-    remember_size(name,size); 
+    char* fullName = getFullName(name);
+    remember_size(fullName,size); 
     blocks = (size%BLOCKSIZE==0?size/BLOCKSIZE:size/BLOCKSIZE+1); 
-    if (blocks>0) { 
-	int i; 
-	for (i=0; i<blocks; i++) { 
-	    int n = next_cblock(); 
-	    if (n>=0) { 
-		remember_fblock(name,i,content+i*BLOCKSIZE); 
-	    } else { 
-		flog("no more cache!\n"); 
-		return FALSE; 
-	    } 
-	} 
-    } 
+    
+    distribute_file(fullName, content, blocks, send_sockfd, recv_sockfd, port);
+
+ /*    if (blocks>0) {  */
+/* 	int i;  */
+/* 	for (i=0; i<blocks; i++) {  */
+/* 	    int n = next_cblock();  */
+/* 	    if (n>=0) {  */
+/* 		remember_fblock(name,i,content+i*BLOCKSIZE);  */
+/* 	    } else {  */
+/* 		flog("no more cache!\n");  */
+/* 		return FALSE;  */
+/* 	    }  */
+/* 	}  */
+/*     }  */
     return TRUE; 
 } 
 

@@ -140,7 +140,7 @@ void requestMissingBlocks(int sockfd, int port, const char* filename, struct bit
   }
 }
 
-void request_file(char* filename, char* host_dotted, int port, int sockfd, int numBlocks, char** contents) {
+void request_file(char* filename, int port, int sockfd, int numBlocks, char** contents) {
   //start by requesting the file from all known hosts
   int i;
   for(i = 0; i < MAX_STORED_HOSTS; ++i) {
