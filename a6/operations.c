@@ -12,6 +12,8 @@
 #include "storage.h"
 #include "operations.h"
 #include "nose.h"
+#include "ft_recv.h"
+#include "ft_send.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -73,24 +75,22 @@ void udp(int recv_sockfd, int send_sockfd) {
   flog("message is '%s'",message); 
   
   if(! (req_is_alive(message) || 
-	req_is_block_to_store(message, send_sockfd,cli_addr) ||
-	req_is_range(message, send_sockfd, cli_addr))) {
+	req_is_block_to_store(message, send_sockfd, &cli_addr) ||
+	req_is_range(message, send_sockfd, &cli_addr))) {
     flog("UDP Datagram doesn't match any known form!");
   }
 } 
 
-char* getFullName(char* name) {
+void getFullName(char* name, char* fullName) {
   //make the name into hostaddr-name
-  char fullName[MAXNAME];
   fullName[0] = '\0';
-  struct sockaddr_in loc_sockaddr;
+  struct in_addr loc_sockaddr;
   char loc_dotted[INET_ADDRSTRLEN];
-  get_primary_addr(&loc_sockaddr);
+  get_primary_addr(& loc_sockaddr);
   inet_ntop(PF_INET, &loc_sockaddr, loc_dotted, INET_ADDRSTRLEN);
   strncat(fullName, loc_dotted, strlen(loc_dotted));
   strncat(fullName, "-", 1);
   strncat(fullName, name, strlen(name));
-  return fullName;
 }
 
 /* get a file from storage;
@@ -98,7 +98,8 @@ char* getFullName(char* name) {
  * content: an array of content (result parameter)
  * size: size of file */ 
 int get(char *name, char **content, int *size, int port, int send_sockfd) { 
-  char* fullName = getFullName(name);
+  char fullName[MAXNAME];
+  getFullName(name, fullName);
   if (get_size(fullName)>=0) {
     int blocks; 
     *size=get_size(fullName); 
@@ -132,7 +133,8 @@ int get(char *name, char **content, int *size, int port, int send_sockfd) {
  * size: size of local file. */ 
 int put(char *name, char *content, int size, int port, int send_sockfd, int recv_sockfd) { 
     int blocks; 
-    char* fullName = getFullName(name);
+    char fullName[MAXNAME];
+    getFullName(name, fullName);
     remember_size(fullName,size); 
     blocks = (size%BLOCKSIZE==0?size/BLOCKSIZE:size/BLOCKSIZE+1); 
     

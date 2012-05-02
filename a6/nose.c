@@ -46,6 +46,7 @@ struct timespec timeBetweenBroadcasts;
 /* logging of server actions */ 
 #define MAXOUT 256 		/* maximum number of output chars for flog */ 
 static void flog(const char *fmt, ...) {
+  return;
     va_list ap;
     char *p; 
     char buf[MAXOUT]; 
@@ -103,7 +104,7 @@ hostRecord* chooseRandomHost() {
   hostRecord* curChoice;
   do {
     randNum = rand() % MAX_STORED_HOSTS;
-  } while((curChoice = getHostRecordAt(randNum)) != NULL);
+  } while((curChoice = getHostRecordAt(randNum)) == NULL);
   return curChoice;
 }
 

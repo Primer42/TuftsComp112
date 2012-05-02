@@ -6,6 +6,7 @@
 #include "nose.h"
 #include "storage.h"
 
+#include <stdarg.h>
 #include <sys/stat.h>
 #include <math.h>
 

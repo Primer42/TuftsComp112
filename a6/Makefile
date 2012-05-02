@@ -11,7 +11,7 @@ nuts: nuts.o
 nuts.o: nuts.c
 	gcc $(CFLAGS) $(OFLAGS) nuts.c
 
-operations.o: operations.c storage.h nose.h ft_recv.h
+operations.o: operations.c storage.h nose.h ft_recv.h ft_send.h
 	gcc $(CFLAGS) $(OFLAGS) operations.c
 
 storage.o: storage.c storage.h

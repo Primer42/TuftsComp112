@@ -6,6 +6,7 @@
 #include "help.h"
 #include "nose.h"
 
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -13,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <sys/time.h>
 
 int distribute_file(char* name, char* contents, int numBocks, int send_sockfd, int recv_sockfd, int port);
 int req_is_range(char* request, int sockfd, struct sockaddr_in* requester_addr);

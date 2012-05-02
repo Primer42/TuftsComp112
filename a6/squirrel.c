@@ -54,9 +54,9 @@ int accept_or_udp(int tcpsock, struct sockaddr *addr,
       /* Watch stdin (fd 0) to see when it has input. */
       FD_ZERO(&rfds); FD_SET(tcpsock, &rfds); FD_SET(recv_udpsock, &rfds); 
       FD_ZERO(&wfds); FD_ZERO(&efds); 
-      if (select((tcpsock>udpsock?tcpsock:udpsock)+1, 
+      if (select((tcpsock>recv_udpsock?tcpsock:recv_udpsock)+1, 
 		 &rfds, &wfds, &efds, NULL))  {
-	if (FD_ISSET(udpsock,&rfds)) {
+	if (FD_ISSET(recv_udpsock,&rfds)) {
 	  udp(recv_udpsock, send_udpsock);
 	  continue;
 	}
@@ -69,7 +69,7 @@ int accept_or_udp(int tcpsock, struct sockaddr *addr,
 } 
 
 /* create a select call to fire udp or read, as relevant */ 
-ssize_t read_or_udp(int tcpsock, void *buf, size_t count, int udpsock) { 
+ssize_t read_or_udp(int tcpsock, void *buf, size_t count, int recv_udpsock, int send_udpsock) { 
 
     fd_set rfds;
     fd_set wfds; 
@@ -77,21 +77,21 @@ ssize_t read_or_udp(int tcpsock, void *buf, size_t count, int udpsock) {
 
     while (TRUE) { 
 	/* Watch stdin (fd 0) to see when it has input. */
-	FD_ZERO(&rfds); FD_SET(tcpsock, &rfds); FD_SET(udpsock, &rfds); 
+	FD_ZERO(&rfds); FD_SET(tcpsock, &rfds); FD_SET(recv_udpsock, &rfds); 
 	FD_ZERO(&wfds); FD_ZERO(&efds); 
-	if (select((tcpsock>udpsock?tcpsock:udpsock)+1, 
+	if (select((tcpsock>recv_udpsock?tcpsock:recv_udpsock)+1, 
 	    &rfds, &wfds, &efds, NULL))  {
-	    if (FD_ISSET(udpsock,&rfds)) udp(udpsock);  
+	  if (FD_ISSET(recv_udpsock,&rfds)) udp(recv_udpsock, send_udpsock);  
 	    if (FD_ISSET(tcpsock,&rfds)) return read(tcpsock,buf,count); 
 	} 
     } 
 } 
 
 /* read up to \n from a socket */ 
-int read_line_or_udp(int tcpsock, char *stuff, int len, int udpsock) { 
+int read_line_or_udp(int tcpsock, char *stuff, int len, int recv_udpsock, int send_udpsock) { 
     int size; 
     int count = 0; 
-    while (count<len && (size=read_or_udp(tcpsock,stuff,1,udpsock))>0 
+    while (count<len && (size=read_or_udp(tcpsock,stuff,1,recv_udpsock, send_udpsock))>0 
 	   && *stuff != '\n') {
 	stuff++; count++; 
     } 
@@ -101,11 +101,11 @@ int read_line_or_udp(int tcpsock, char *stuff, int len, int udpsock) {
 } 
 
 /* read a fixed-size block from a socket, or up to eof */ 
-int read_block_or_udp(int tcpsock, char *stuff, int size, int udpsock) { 
+int read_block_or_udp(int tcpsock, char *stuff, int size, int recv_udpsock, int send_udpsock) { 
     int c; 
     int count=0; 
     do { 
-	c=read_or_udp(tcpsock,stuff,size,udpsock); 
+      c=read_or_udp(tcpsock,stuff,size,recv_udpsock, send_udpsock); 
 	if (c>0) { size-=c; stuff+=c; count+=c; } 
 	else return count; 
     } while (size>0); 
@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
 	} 	
 
 	/* read a message from the client */
-	reqlen = read_line_or_udp(new_tcp_sock, request, MAXMESG, recv_udp_sock); 
+	reqlen = read_line_or_udp(new_tcp_sock, request, MAXMESG, recv_udp_sock, send_udp_sock); 
 	flog("received '%s'", request);
 	if (req_is_get(request,filename)) { 
 	  if (get(filename,&contents,&filesize, serv_port, send_udp_sock)) { 
@@ -344,8 +344,8 @@ int main(int argc, char *argv[])
 	    contents = (char *)malloc(filesize); 	
 	    int bytesread = 0; 
 	    if ((bytesread=read_block_or_udp(new_tcp_sock,contents,
-		filesize,recv_udp_sock))==filesize) { 
-	      if (put(filename,contents,filesize, serv_port, send_udp_sock)) { 
+					     filesize,recv_udp_sock, send_udp_sock))==filesize) { 
+	      if (put(filename,contents,filesize, serv_port, send_udp_sock, recv_udp_sock)) { 
 		    ok(new_tcp_sock); 
 		} else { 
 		    failed(new_tcp_sock); 

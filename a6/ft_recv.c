@@ -17,6 +17,24 @@
 
 #include "ft_recv.h"
 
+
+#define MAXOUT 256 		/* maximum number of output chars for flog */ 
+static void flog(const char *fmt, ...) {
+    va_list ap;
+    char *p; 
+    char buf[MAXOUT]; 
+    va_start(ap, fmt);
+    fprintf(stderr,"[ft_recv: "); 
+    vsnprintf(buf,MAXOUT,fmt,ap); 
+    for (p=buf; *p && p-buf<MAXOUT; p++) 
+	if ((*p)>=' ') 
+	    putc(*p,stderr);
+ 
+    fprintf(stderr,"]\n"); 
+    va_end(ap);
+} 
+
+
 int req_is_block_to_store(char* request, int send_sockfd, struct sockaddr_in* sender_addr) {
   struct block locBlk;
   struct block netBlk;
@@ -33,7 +51,7 @@ int req_is_block_to_store(char* request, int send_sockfd, struct sockaddr_in* se
 
   int n = next_cblock();
   if(n >=0) {
-    if(rememeber_fblock(locBlk.filename, locBlk.which_block, loc_block.payload)) {
+    if(remember_fblock(locBlk.filename, locBlk.which_block, locBlk.payload)) {
       //ack it
       char* ack = "ACK";
       sendto(send_sockfd, ack, sizeof(ack), 0, (struct sockaddr*) sender_addr, sizeof(sender_addr));
