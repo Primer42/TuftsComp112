@@ -2,6 +2,7 @@
 #define _NOSE_H
 
 #include "help.h"
+#include "storage.h"
 
 #define MAX_STORED_HOSTS 10
 

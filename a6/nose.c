@@ -13,7 +13,6 @@
 
 #include "nose.h"
 
-#define MAX_MESG 1024
 #define BROADCAST_EVERY 5
 
 //if DEAD_THRESHOLD is less than BROADCAST_EVERY, we will not find ourselves
@@ -116,17 +115,17 @@ void checkHostsAliveSignalHandler(int sig) {
   if(sig == SIGALRM) {
     //send out our broadcast packet
     //make the message
-    char send_line [MAX_MESG];
+    char send_line [MAXMESG];
     send_line[0] = '\0';
-    strncat(send_line, "alive\n", 6);
+    strncat(send_line, ALIVE_MESG, strlen(ALIVE_MESG));
     int i;
-    char hostLine[MAX_MESG];
+    char hostLine[MAXMESG];
     for(i = 0; i < MAX_STORED_HOSTS; ++i) {
       hostRecord* curHost = getHostRecordAt(i);
       if(curHost == NULL) {
 	continue;
       }
-      snprintf(hostLine, MAX_MESG, "%s %ld\n", curHost->hostAddr, curHost->lastSeenAt);
+      snprintf(hostLine, MAXMESG, "%s %ld\n", curHost->hostAddr, curHost->lastSeenAt);
       strncat(send_line, hostLine, strlen(hostLine));
     }
 
@@ -187,7 +186,7 @@ void addOrUpdateHostNow(char* newHostAddr) {
 }
 
 int req_is_alive(char* request) {
-  if(strncmp(request, "alive\n", 6) == 0) {
+  if(strncmp(request, ALIVE_MESG, strlen(ALIVE_MESG)) == 0) {
     //add the hosts from the message to our records
     char newHost[INET_ADDRSTRLEN];
     time_t remoteSeenAt;

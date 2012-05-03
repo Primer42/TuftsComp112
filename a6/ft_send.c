@@ -27,11 +27,11 @@ int req_is_range(char* request, int sockfd, struct sockaddr_in* requester_addr) 
   struct command netCmd;
   memset(&netCmd, 0, sizeof(netCmd));
   
-  if(strlen(request) != sizeof(netCmd)) {
+  if(strncmp(request, REQUEST_RANGE_MESG, strlen(REQUEST_RANGE_MESG)) != 0) {
     return FALSE;
   }
   
-  netCmd = *((struct command *) request);
+  netCmd = * ((struct command *) &(request[strlen(REQUEST_RANGE_MESG)]));
   
   //get the local command
   command_network_to_local(&locCmd, &netCmd);
@@ -84,9 +84,13 @@ hostRecord* sendBlockToAHost(hostRecord* notThisHost, struct block netBlk, int s
     inet_pton(PF_INET, address, &server_addr.sin_addr);
     server_addr.sin_port = htons(port);
 
-    flog("Sending '%s'\n", (char*) (&netBlk));
+    char mesg[MAXMESG];
+    mesg[0] = '\0';
+    strncat(mesg, STORE_BLOCK_MESG, strlen(STORE_BLOCK_MESG));
+    strncat(mesg, (char*) &netBlk, sizeof(netBlk));
 
-    if(sendto(send_sockfd, &netBlk, sizeof(netBlk), 0, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
+
+    if(sendto(send_sockfd, mesg, strlen(mesg), 0, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
       flog("error sending block to host %s. Retrying\n", address);
       perror("sendto:");
       continue;
@@ -155,5 +159,6 @@ int distribute_file(char* name, char* contents, int numBlocks, int send_sockfd, 
 
   }
   flog("Done distributing %s", name);
+  return TRUE;
 }
 

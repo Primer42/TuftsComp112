@@ -40,9 +40,12 @@ extern uint64_t ntoh64(uint64_network_t bar);
   protocol definitions 
   =============================*/ 
 
-//#define PAYLOADSIZE 128		/* file bytes per packet */ 
-//#define FILENAMESIZE 48		/* limit on file name size */ 
 #define MAXRANGES    12		/* ranges in one command */ 
+
+#define ALIVE_MESG "a"
+#define STORE_BLOCK_MESG "b"
+#define REQUEST_RANGE_MESG "r"
+#define DELETE_BLOCK_MESG "d"
 
 // a range of blocks to send 
 struct range { 

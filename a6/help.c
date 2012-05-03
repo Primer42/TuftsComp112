@@ -329,7 +329,7 @@ void command_local_to_network(struct command *local, struct command_network *net
 #ifndef V2
 void command_network_to_local(struct command *local, struct command *network) {
 #else /* V2 */
-void command_network_to_local(struct command *local, struct command_network *network) {
+  void command_network_to_local(struct command *local, struct command_network *network) {
 #endif /* V2 */
     int i; 
     memcpy(local->filename, network->filename,  MAXNAME); 
@@ -376,8 +376,12 @@ int send_command(int sockfd, const char *address, int port,
     inet_pton(PF_INET, address, &server_addr.sin_addr);
     server_addr.sin_port        = htons(port);
 /* send the packet: only send instantiated ranges */ 
-    int sendsize = COMMAND_SIZE(loc_cmd.nranges);
-    int ret = sendto(sockfd, (void *)&net_cmd, sendsize, 0, 
+    char mesg[MAXMESG];
+    mesg[0] = '\0';
+    strncat(mesg, REQUEST_RANGE_MESG, strlen(REQUEST_RANGE_MESG));
+    strncat(mesg, (char*) &net_cmd, COMMAND_SIZE(loc_cmd.nranges));
+    
+    int ret = sendto(sockfd, (void *)mesg, strlen(mesg), 0, 
 	(struct sockaddr *)&server_addr, sizeof(server_addr)); 
     if (ret<0) perror("send_command"); 
     return ret;

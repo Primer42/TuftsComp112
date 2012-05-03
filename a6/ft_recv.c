@@ -41,11 +41,11 @@ int req_is_block_to_store(char* request, int send_sockfd, struct sockaddr_in* se
   memset(&locBlk, 0, sizeof(locBlk));
   memset(&netBlk, 0, sizeof(netBlk));
 
-  if(strlen(request) != sizeof(netBlk)) {
+  if(strncmp(request, STORE_BLOCK_MESG, strlen(STORE_BLOCK_MESG)) != 0) {
     return FALSE;
   }
 
-  netBlk = *((struct block*) request);
+  netBlk = * ((struct block *) &(request[strlen(STORE_BLOCK_MESG)]));
 
   block_network_to_local(&locBlk, &netBlk);
 
@@ -90,8 +90,12 @@ void sendPremadeCommand(int sockfd, int port, struct command loc_cmd) {
     inet_pton(PF_INET, address, &server_addr.sin_addr);
     server_addr.sin_port = htons(port);
     //send the packet
-    int sendsize = COMMAND_SIZE(loc_cmd.nranges);
-    int ret = sendto(sockfd, (void*) & net_cmd, sendsize, 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
+    char mesg[MAXMESG];
+    mesg[0] = '\0';
+    strncat(mesg, REQUEST_RANGE_MESG, strlen(REQUEST_RANGE_MESG));
+    strncat(mesg, (char*) &net_cmd, COMMAND_SIZE(loc_cmd.nranges));
+
+    int ret = sendto(sockfd, (void*) mesg, strlen(mesg), 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
     if (ret<0) perror ("sendPremadeCommand");
   }
 }
