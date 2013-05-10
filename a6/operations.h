@@ -1,9 +1,11 @@
 #ifndef _OPERATIONS_H
 #define _OPERATIONS_H
 
+void processUdpMessage(char* message, int send_sockfd, char* cli_dotted, int port);
+
 /* called when udp datagram available on a socket 
  * socket: number of socket */ 
-void udp(int recv_sock, int send_sockfd); 
+void udp(int recv_sock, int send_sockfd, int port); 
 
 /* get a file from storage;
  * name: name of file (in local machine)

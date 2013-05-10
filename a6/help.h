@@ -47,6 +47,8 @@ extern uint64_t ntoh64(uint64_network_t bar);
 #define REQUEST_RANGE_MESG "r"
 #define DELETE_BLOCK_MESG "d"
 
+#define ACK_STR "ACK"
+
 // a range of blocks to send 
 struct range { 
 #ifndef V2

@@ -16,7 +16,7 @@
 #define BROADCAST_EVERY 5
 
 //if DEAD_THRESHOLD is less than BROADCAST_EVERY, we will not find ourselves
-#define DEAD_THRESHOLD 4
+#define DEAD_THRESHOLD 5
 #define NUM_BROADCAST_ADDRS 1
 
 /*This is the array of host records.
@@ -40,12 +40,12 @@ int port; //port is going to be used by both sending and recieving sides
 int send_sockfd;
 struct sockaddr_in bcast_addrs[NUM_BROADCAST_ADDRS];
 struct timespec timeBetweenBroadcasts;
+char myAddress[MAXADDR];
 
 
 /* logging of server actions */ 
 #define MAXOUT 256 		/* maximum number of output chars for flog */ 
 static void flog(const char *fmt, ...) {
-  return;
     va_list ap;
     char *p; 
     char buf[MAXOUT]; 
@@ -58,31 +58,6 @@ static void flog(const char *fmt, ...) {
     fprintf(stderr,"]\n"); 
     va_end(ap);
 }
-
-
-// read the primary IP address for an ECE/CS host 
-// this is always the address bound to interface eth0
-// this is used to avoid listening (by default) on 
-// maintenance interfaces. 
-// taken from halligan.c
-/* int get_primary_addr(struct in_addr *a) {  */
-/*     struct ifaddrs * ifAddrStruct=NULL; */
-/*     struct ifaddrs * ifa=NULL; */
-/*     if (!getifaddrs(&ifAddrStruct)) // get linked list of interface specs */
-/* 	for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) { */
-/* 	    if (ifa ->ifa_addr->sa_family==AF_INET) {  // is an IP4 Address */
-/* 		if (strcmp(ifa->ifa_name,"eth0")==0) { // is for interface eth0 */
-/* 		    void *tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr) */
-/* 			->sin_addr; */
-/* 		    memcpy(a, tmpAddrPtr, sizeof(struct in_addr));  */
-/* 		    if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct); */
-/* 		    return 0; // found  */
-/* 		}  */
-/* 	    }  */
-/* 	} */
-/*     if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct); */
-/*     return -1; // not found */
-/* } */ 
 
 hostRecord* getHostRecordAt(int i) {
   if(i < 0 || i >= MAX_STORED_HOSTS) {
@@ -98,12 +73,30 @@ hostRecord* getHostRecordAt(int i) {
   return & records[i];
 }
 
+int getNumValidHosts() {
+  int i;
+  int count = 0;
+  for(i = 0; i < MAX_STORED_HOSTS; i++) {
+    if(getHostRecordAt(i) != NULL) {
+      count++;
+    }
+  }
+  flog("%d valid hosts\n", count);
+  return count;
+
+}
+
 hostRecord* chooseRandomHost() {
   int randNum;
   hostRecord* curChoice;
+  flog("Starting chooseRandomHost()\n");
   do {
+    if(getNumValidHosts() <= 1) {
+      flog("1 or fewer hosts available\n");
+    }
     randNum = rand() % MAX_STORED_HOSTS;
   } while((curChoice = getHostRecordAt(randNum)) == NULL);
+  flog("Done with chooseRandomHost(). Return %s\n", curChoice->hostAddr);
   return curChoice;
 }
 
@@ -113,6 +106,7 @@ hostRecord* chooseRandomHost() {
 //and also print the known hosts every 5 seconds
 void checkHostsAliveSignalHandler(int sig) {
   if(sig == SIGALRM) {
+    flog("Sending alive message\n");
     //send out our broadcast packet
     //make the message
     char send_line [MAXMESG];
@@ -145,6 +139,9 @@ void checkHostsAliveSignalHandler(int sig) {
 }
 
 void addOrUpdateHost(char* newHostAddr, time_t seenAt) {
+  if(strncmp(newHostAddr, myAddress, MAXADDR) == 0) {
+    return;
+  }
   //find the first host that is either out of date or matches our connected host
   flog("Got host %s seen at %ld\n", newHostAddr, seenAt);
   int matchingIndex = -1;
@@ -187,6 +184,8 @@ void addOrUpdateHostNow(char* newHostAddr) {
 
 int req_is_alive(char* request) {
   if(strncmp(request, ALIVE_MESG, strlen(ALIVE_MESG)) == 0) {
+    //doing this is introducing bad hosts - don't do it :D
+    return 1;
     //add the hosts from the message to our records
     char newHost[INET_ADDRSTRLEN];
     time_t remoteSeenAt;
@@ -236,6 +235,11 @@ void initDiscovery(int inputPort, int udp_sock) {
 
   timeBetweenBroadcasts.tv_sec = 1;
   timeBetweenBroadcasts.tv_nsec = 0;
+
+  struct in_addr myInAddr;
+  get_primary_addr(&myInAddr);
+  strncpy(myAddress, inet_ntoa(myInAddr), MAXADDR);
+  
 
   //set up signal handling method
   signal(SIGALRM, checkHostsAliveSignalHandler);

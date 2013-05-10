@@ -44,7 +44,7 @@ static void flog(const char *fmt, ...) {
 
 /* create a select call to fire udp or accept, as relevant */ 
 int accept_or_udp(int tcpsock, struct sockaddr *addr, 
-		  socklen_t *addrlen, int recv_udpsock, int send_udpsock) { 
+		  socklen_t *addrlen, int recv_udpsock, int send_udpsock, int port) { 
     fd_set rfds;
     fd_set wfds; 
     fd_set efds; 
@@ -57,7 +57,7 @@ int accept_or_udp(int tcpsock, struct sockaddr *addr,
       if (select((tcpsock>recv_udpsock?tcpsock:recv_udpsock)+1, 
 		 &rfds, &wfds, &efds, NULL))  {
 	if (FD_ISSET(recv_udpsock,&rfds)) {
-	  udp(recv_udpsock, send_udpsock);
+	  udp(recv_udpsock, send_udpsock, port);
 	  continue;
 	}
 	if (FD_ISSET(tcpsock,&rfds)) {
@@ -69,7 +69,7 @@ int accept_or_udp(int tcpsock, struct sockaddr *addr,
 } 
 
 /* create a select call to fire udp or read, as relevant */ 
-ssize_t read_or_udp(int tcpsock, void *buf, size_t count, int recv_udpsock, int send_udpsock) { 
+ssize_t read_or_udp(int tcpsock, void *buf, size_t count, int recv_udpsock, int send_udpsock, int port) { 
 
     fd_set rfds;
     fd_set wfds; 
@@ -81,17 +81,17 @@ ssize_t read_or_udp(int tcpsock, void *buf, size_t count, int recv_udpsock, int 
 	FD_ZERO(&wfds); FD_ZERO(&efds); 
 	if (select((tcpsock>recv_udpsock?tcpsock:recv_udpsock)+1, 
 	    &rfds, &wfds, &efds, NULL))  {
-	  if (FD_ISSET(recv_udpsock,&rfds)) udp(recv_udpsock, send_udpsock);  
+	  if (FD_ISSET(recv_udpsock,&rfds)) udp(recv_udpsock, send_udpsock, port);  
 	    if (FD_ISSET(tcpsock,&rfds)) return read(tcpsock,buf,count); 
 	} 
     } 
 } 
 
 /* read up to \n from a socket */ 
-int read_line_or_udp(int tcpsock, char *stuff, int len, int recv_udpsock, int send_udpsock) { 
+int read_line_or_udp(int tcpsock, char *stuff, int len, int recv_udpsock, int send_udpsock, int port) { 
     int size; 
     int count = 0; 
-    while (count<len && (size=read_or_udp(tcpsock,stuff,1,recv_udpsock, send_udpsock))>0 
+    while (count<len && (size=read_or_udp(tcpsock,stuff,1,recv_udpsock, send_udpsock, port))>0 
 	   && *stuff != '\n') {
 	stuff++; count++; 
     } 
@@ -101,11 +101,11 @@ int read_line_or_udp(int tcpsock, char *stuff, int len, int recv_udpsock, int se
 } 
 
 /* read a fixed-size block from a socket, or up to eof */ 
-int read_block_or_udp(int tcpsock, char *stuff, int size, int recv_udpsock, int send_udpsock) { 
+int read_block_or_udp(int tcpsock, char *stuff, int size, int recv_udpsock, int send_udpsock, int port) { 
     int c; 
     int count=0; 
     do { 
-      c=read_or_udp(tcpsock,stuff,size,recv_udpsock, send_udpsock); 
+      c=read_or_udp(tcpsock,stuff,size,recv_udpsock, send_udpsock, port); 
 	if (c>0) { size-=c; stuff+=c; count+=c; } 
 	else return count; 
     } while (size>0); 
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 
 	/* wait for a connection from a client; this is an iterative server */
 	reqlen = (socklen_t) sizeof(cli_addr);
-	new_tcp_sock = accept_or_udp(tcp_sock, (struct sockaddr *) &cli_addr, &reqlen, recv_udp_sock, send_udp_sock);
+	new_tcp_sock = accept_or_udp(tcp_sock, (struct sockaddr *) &cli_addr, &reqlen, recv_udp_sock, send_udp_sock, serv_port);
 		   
 	if(new_tcp_sock < 0) {
 	     perror("can't bind local address");
@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
 	} 	
 
 	/* read a message from the client */
-	reqlen = read_line_or_udp(new_tcp_sock, request, MAXMESG, recv_udp_sock, send_udp_sock); 
+	reqlen = read_line_or_udp(new_tcp_sock, request, MAXMESG, recv_udp_sock, send_udp_sock, serv_port); 
 	flog("received '%s'", request);
 	if (req_is_get(request,filename)) { 
 	  if (get(filename,&contents,&filesize, serv_port, send_udp_sock)) { 
@@ -344,7 +344,7 @@ int main(int argc, char *argv[])
 	    contents = (char *)malloc(filesize); 	
 	    int bytesread = 0; 
 	    if ((bytesread=read_block_or_udp(new_tcp_sock,contents,
-					     filesize,recv_udp_sock, send_udp_sock))==filesize) { 
+					     filesize,recv_udp_sock, send_udp_sock, serv_port))==filesize) { 
 	      if (put(filename,contents,filesize, serv_port, send_udp_sock, recv_udp_sock)) { 
 		    ok(new_tcp_sock); 
 		} else { 

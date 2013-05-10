@@ -9,7 +9,7 @@ static void flog(const char *fmt, ...) {
     char *p; 
     char buf[MAXOUT]; 
     va_start(ap, fmt);
-    fprintf(stderr,"[ft_recv: "); 
+    fprintf(stderr,"[ft_send: "); 
     vsnprintf(buf,MAXOUT,fmt,ap); 
     for (p=buf; *p && p-buf<MAXOUT; p++) 
 	if ((*p)>=' ') 
@@ -70,65 +70,74 @@ int req_is_range(char* request, int sockfd, struct sockaddr_in* requester_addr) 
 
 hostRecord* sendBlockToAHost(hostRecord* notThisHost, struct block netBlk, int send_sockfd, int recv_sockfd, int port) {
   hostRecord* h;
-  while(TRUE) {
-    do {
-      h = chooseRandomHost();
-    } while(h == notThisHost);
+ retry:
+  flog("Starting to choose host to send block to\n");
+  h = NULL;
+  do {
+    h = chooseRandomHost();
+    flog("Choose host %s\n", h->hostAddr);
+  } while(h == notThisHost);
+  
+  flog("Sending block of to %s\n", h->hostAddr);
+  
+  const char* address = h->hostAddr;
+  struct sockaddr_in server_addr;
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family=PF_INET;
+  inet_pton(PF_INET, address, &server_addr.sin_addr);
+  server_addr.sin_port = htons(port);
+  
+  char mesg[MAXMESG];
+  mesg[0] = '\0';
+  strncat(mesg, STORE_BLOCK_MESG, strlen(STORE_BLOCK_MESG));
+  memcpy(mesg+strlen(STORE_BLOCK_MESG), &netBlk, sizeof(netBlk));
+  
+  flog("Sending message %s", mesg);
+  
+  if(sendto(send_sockfd, mesg, strlen(mesg), 0, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
+    flog("error sending block to host %s. Retrying\n", address);
+    perror("sendto:");
+    goto retry;
+  }
+  flog("Wating for ACK on socket %d\n", recv_sockfd);
+  //wait for an ACK
+  struct timeval timeout;
+  timeout.tv_sec = 2;
+  timeout.tv_usec = 0;
+  fd_set rfds;
+  fd_set wfds;
+  fd_set efds;
+ ACKwait:
+  
+  FD_ZERO(&rfds); FD_SET(recv_sockfd, &rfds);
+  FD_ZERO(&wfds);
+  FD_ZERO(&efds);
+  if(select(recv_sockfd+1, &rfds, &wfds, &efds, &timeout) > 0) {
+    flog("Select has a message\n");
+    int mesglen=0;
+    char message[MAXMESG];
+    struct sockaddr_in cli_addr;
+    int cli_len = sizeof(cli_addr);
+    char cli_dotted[MAXADDR];
+    mesglen = recvfrom(recv_sockfd, message, MAXMESG, 0, (struct sockaddr*) &cli_addr, &cli_len);
+    inet_ntop(PF_INET, (void*) &(cli_addr.sin_addr.s_addr), cli_dotted, MAXADDR);
+    flog("Got message %s from %s\n", message, cli_dotted);
 
-    flog("Sending block to %s\n", h->hostAddr);
-
-    const char* address = h->hostAddr;
-    struct sockaddr_in server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family=PF_INET;
-    inet_pton(PF_INET, address, &server_addr.sin_addr);
-    server_addr.sin_port = htons(port);
-
-    char mesg[MAXMESG];
-    mesg[0] = '\0';
-    strncat(mesg, STORE_BLOCK_MESG, strlen(STORE_BLOCK_MESG));
-    strncat(mesg, (char*) &netBlk, sizeof(netBlk));
-
-
-    if(sendto(send_sockfd, mesg, strlen(mesg), 0, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
-      flog("error sending block to host %s. Retrying\n", address);
-      perror("sendto:");
-      continue;
+    if(strncmp(ACK_STR, message, 3) != 0) {
+      flog("Response was not %s\n", ACK_STR);
+      processUdpMessage(message, send_sockfd, cli_dotted, port);
+      goto ACKwait;
     }
-    flog("Wating for ACK\n");
-    //wait for an ACK
-    fd_set rfds;
-    fd_set wfds;
-    fd_set efds;
-    FD_ZERO(&rfds); FD_SET(recv_sockfd, &rfds);
-    FD_ZERO(&wfds);
-    FD_ZERO(&efds);
-    struct timeval timeout;
-    timeout.tv_sec = 1;
-    timeout.tv_usec = 0;
-    if(select(recv_sockfd, &rfds, &wfds, &efds, &timeout) > 0) {
-      int mesglen=0;
-      char message[MAXMESG];
-      struct sockaddr_in cli_addr;
-      int cli_len = sizeof(cli_addr);
-      mesglen = recvfrom(recv_sockfd, message, MAXMESG, 0, (struct sockaddr*) &cli_addr, &cli_len);
-      char cli_dotted[MAXADDR];
-      inet_ntop(PF_INET, (void*) &(cli_addr.sin_addr.s_addr), cli_dotted, MAXADDR);
-      if(strncmp(address, cli_dotted, MAXADDR) != 0){
-	flog("Got response from wrong host\n");
-	continue;
-      }
-      
-      if(strncmp("ACK", message, 3) != 0) {
-	flog("Response was not ACK\n");
-	continue;
-      }
 
-    } else {
-      //retry
-      continue;
+    if(strncmp(address, cli_dotted, MAXADDR) != 0){
+      flog("Got response from wrong host\n");
+      goto ACKwait;
     }
-    break;
+    
+  } else {
+    flog("Select timeout\n");
+    //retry
+    goto retry;
   }
   flog("Done sending block\n");
   return h;

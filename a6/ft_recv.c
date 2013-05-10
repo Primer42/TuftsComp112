@@ -52,9 +52,12 @@ int req_is_block_to_store(char* request, int send_sockfd, struct sockaddr_in* se
   int n = next_cblock();
   if(n >=0) {
     if(remember_fblock(locBlk.filename, locBlk.which_block, locBlk.payload)) {
+      flog("Stored payload %s of %s\n", locBlk.payload, locBlk.filename);
+      char sender_dotted[MAXADDR];
+      inet_ntop(PF_INET, (void*) &(sender_addr->sin_addr.s_addr), sender_dotted, MAXADDR);
+      flog("Stored block - sending %s on socket %d to %s\n", ACK_STR, send_sockfd, sender_dotted);
       //ack it
-      char* ack = "ACK";
-      sendto(send_sockfd, ack, sizeof(ack), 0, (struct sockaddr*) sender_addr, sizeof(sender_addr));
+      sendto(send_sockfd, ACK_STR, strlen(ACK_STR), 0, (struct sockaddr*) sender_addr, sizeof(sender_addr));
     }
   } else {
     flog("no more cache!\n");

@@ -35,9 +35,27 @@ static void flog(const char *fmt, ...) {
     va_end(ap);
 } 
 
+void processUdpMessage(char* message, int send_sockfd, char* cli_dotted, int port) {
+  
+  //add it to our seen hosts
+  addOrUpdateHostNow(cli_dotted);
+
+  struct sockaddr_in cli_addr;
+  memset(&cli_addr, 0, sizeof(struct sockaddr_in));
+  cli_addr.sin_family=PF_INET;
+  inet_aton(cli_dotted, &cli_addr.sin_addr);
+  cli_addr.sin_port = htons(port);
+
+  if(! (req_is_alive(message) || 
+	req_is_block_to_store(message, send_sockfd, &cli_addr) ||
+	req_is_range(message, send_sockfd, &cli_addr))) {
+    flog("UDP Datagram doesn't match any known form!");
+  }
+}
+
 /* called when udp datagram available on a socket 
  * socket: number of socket */ 
-void udp(int recv_sockfd, int send_sockfd) {
+void udp(int recv_sockfd, int send_sockfd, int port) {
   /* client data */
   struct sockaddr_in cli_addr;        /* raw client address */
   int cli_len;                        /* length used */
@@ -59,8 +77,7 @@ void udp(int recv_sockfd, int send_sockfd) {
 	    cli_dotted, MAXADDR);
   flog("udp connection from %s\n",cli_dotted);
   
-  //add it to our seen hosts
-  addOrUpdateHostNow(cli_dotted);
+ 
   
   /* convert numeric internet address to name */
   cli_ulong = cli_addr.sin_addr.s_addr;
@@ -74,11 +91,8 @@ void udp(int recv_sockfd, int send_sockfd) {
   message[mesglen]='\0'; // moot point; makes it a string if possible
   flog("message is '%s'",message); 
   
-  if(! (req_is_alive(message) || 
-	req_is_block_to_store(message, send_sockfd, &cli_addr) ||
-	req_is_range(message, send_sockfd, &cli_addr))) {
-    flog("UDP Datagram doesn't match any known form!");
-  }
+  processUdpMessage(message, send_sockfd, cli_dotted, port);
+
 } 
 
 void getFullName(char* name, char* fullName) {
